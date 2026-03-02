@@ -1,0 +1,66 @@
+---
+title: Verification Links
+description: Generate and manage verification links
+---
+
+Verification links are URLs that direct end users to complete their identity verification. deepidv supports two types of links: **session links** and **permalinks**.
+
+## Session links
+
+Every session created through the API or Admin Console generates a unique, one-time verification link. This link is specific to a single session and a single applicant.
+
+When you create a session, the link is returned in the response:
+
+```json
+{
+  "idv_id": "abc123-def456-ghi789",
+  "session_url": "https://api.deepidv.com/session/abc123-def456-ghi789",
+  "links": []
+}
+```
+
+The `session_url` is the unique link for that session. If you enable email or SMS invites, this link is automatically sent to the applicant.
+
+### How session links work
+
+1. You create a session via the API or Admin Console
+2. The applicant receives the link via email, SMS, or you share it directly
+3. The applicant opens the link and completes the verification steps defined in the session's workflow
+4. Results are available in the Admin Console and via the API
+
+## Permalinks
+
+Permalinks are persistent, reusable verification links tied to a specific user in your organization. Unlike session links, permalinks don't expire after a single use — they can be embedded on your website, shared in onboarding flows, or reused across multiple verification requests.
+
+### When to use permalinks
+
+- **Embed on your website** — place a verification link on a page where applicants can self-serve
+- **Onboarding emails** — include a consistent link in your welcome flow
+- **Repeat verifications** — allow the same applicant to re-verify without generating a new session manually
+
+## Delivery methods
+
+When creating a session, you can control how the verification link is delivered:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `sendEmailInvite` | `true` | Sends the verification link to the applicant's email |
+| `sendPhoneInvite` | `true` | Sends the verification link via SMS |
+
+Set either to `false` if you want to deliver the link yourself:
+
+```bash
+curl -X POST https://api.deepidv.com/v1/sessions \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "+15192223333",
+    "sendEmailInvite": false,
+    "sendPhoneInvite": false
+  }'
+```
+
+The `session_url` in the response gives you the link to share however you prefer.

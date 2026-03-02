@@ -1,0 +1,56 @@
+---
+title: Manual Review
+description: Manually review and manage verification sessions
+---
+
+Not every verification can be fully automated. The Manual Review feature in the Admin Console lets your team inspect flagged sessions, compare submitted documents against extracted data, and make a final decision.
+
+## Session statuses
+
+Every session moves through a lifecycle of statuses:
+
+| Status | Description |
+|--------|-------------|
+| **Pending** | Session created, waiting for the applicant to begin |
+| **Submitted** | Applicant has completed the verification steps; awaiting review |
+| **Verified** | Session approved — the applicant passed all checks |
+| **Rejected** | Session denied — one or more checks failed or were flagged |
+| **Voided** | Session invalidated and excluded from reporting |
+
+## Reviewing a session
+
+1. Log in to the [Admin Console](https://app.deepidv.com)
+2. Navigate to **Sessions** to view all sessions for your organization
+3. Filter by status to find sessions that need review (e.g. **Submitted**)
+4. Click on a session to open the detail view
+
+### What you'll see
+
+The session detail view shows:
+
+- **Applicant information** — name, email, phone, and any external ID you provided
+- **Submitted documents** — uploaded ID images and selfie photos
+- **Verification results** — outcomes from each service (ID check, liveness, PEP screening, etc.)
+- **Session metadata** — timestamps, workflow used, and session progress
+
+### Taking action
+
+From the session detail view, you can:
+
+- **Verify** — approve the session if you're satisfied with the results
+- **Reject** — deny the session if the applicant fails your review criteria
+- **Void** — invalidate the session entirely (useful for test sessions or duplicates)
+
+<Tip>
+  Voiding a session removes it from aggregate reporting and analytics, but the record is retained for audit purposes.
+</Tip>
+
+## Filtering and search
+
+Use the Admin Console's filtering tools to narrow down sessions by:
+
+- Status (Pending, Submitted, Verified, Rejected, Voided)
+- Date range
+- Applicant name or email
+- External ID
+- Workflow

@@ -1,0 +1,67 @@
+---
+title: Workflows
+description: Configure and manage verification workflows
+---
+
+Workflows let you bundle multiple verification services into a single, reusable configuration. Instead of specifying individual services for each session, create a workflow once and reference it by ID whenever you create a session.
+
+## What's in a workflow
+
+A workflow defines:
+- **Which services to run** — any combination of ID verification, face liveness, age estimation, PEP & sanctions screening, bank statement sync, or AI analysis
+- **Total cost per session** — the sum of all included services
+
+When you create a session with a `workflowId`, deepidv automatically runs all the checks defined in that workflow.
+
+## Creating a workflow
+
+Workflows can be created and managed through the [Admin Console](https://app.deepidv.com) or the API.
+
+### Admin Console
+
+1. Log in to the [Admin Console](https://app.deepidv.com)
+2. Navigate to **Workflows**
+3. Click **Create Workflow**
+4. Name your workflow and select the services to include
+5. Save the workflow
+
+### API
+
+Use the Workflows API to create and manage workflows programmatically. See the [API Reference](/api-reference/sessions/create-session) for details.
+
+## Using a workflow
+
+Pass the `workflowId` when creating a session:
+
+```bash
+curl -X POST https://api.deepidv.com/v1/sessions \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "+15192223333",
+    "workflowId": "wf_abc123"
+  }'
+```
+
+If no `workflowId` is provided, the session runs as a standalone verification using the default configuration.
+
+## Listing workflows
+
+Retrieve all workflows for your organization:
+
+```bash
+curl -X GET https://api.deepidv.com/v1/workflows \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+## Viewing sessions under a workflow
+
+Retrieve all sessions associated with a specific workflow:
+
+```bash
+curl -X GET https://api.deepidv.com/v1/workflows/{workflowId} \
+  -H "x-api-key: YOUR_API_KEY"
+```

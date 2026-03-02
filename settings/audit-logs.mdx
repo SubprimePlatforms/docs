@@ -1,0 +1,46 @@
+---
+title: Audit Logs
+description: Track and review all activity in your organization
+---
+
+Audit Logs provide a complete record of actions taken within your deepidv organization. Every significant event is logged with a timestamp, the user who performed it, and relevant details.
+
+## Accessing audit logs
+
+1. Log in to the [Admin Console](https://app.deepidv.com)
+2. Navigate to **Settings** → **Audit Logs**
+
+## What's logged
+
+| Event | Description |
+|-------|-------------|
+| **Session created** | A verification session was created via API or Admin Console |
+| **Session reviewed** | A session was manually verified, rejected, or voided |
+| **API key generated** | A new API key was created |
+| **API key revoked** | An existing API key was revoked |
+| **User invited** | A new team member was invited to the organization |
+| **User removed** | A team member was removed from the organization |
+| **Settings changed** | Organization settings were updated (white label, billing, etc.) |
+| **Workflow created** | A new workflow was created |
+| **Workflow updated** | An existing workflow was modified |
+
+## Log details
+
+Each log entry includes:
+
+- **Timestamp** — when the action occurred
+- **Actor** — the user or API key that performed the action
+- **Action** — what was done
+- **Details** — relevant context (e.g., session ID, setting changed, etc.)
+
+## Filtering and search
+
+Filter audit logs by:
+
+- **Date range** — focus on a specific time period
+- **Actor** — view actions by a particular team member
+- **Event type** — filter by category (sessions, API keys, settings, etc.)
+
+<Info>
+  Audit logs are retained for compliance and cannot be deleted. They are read-only for all users.
+</Info>

@@ -1,0 +1,65 @@
+---
+title: API Authentication
+description: Learn how to authenticate with the deepidv API
+---
+
+All API requests must be authenticated using an API key passed in the request header.
+
+## Base URL
+
+```
+https://api.deepidv.com
+```
+
+All endpoints are prefixed with `/v1`.
+
+## Authentication header
+
+Include your API key in the `x-api-key` header with every request:
+
+```bash
+curl -X GET https://api.deepidv.com/v1/sessions \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+deepidv validates your API key using HMAC SHA256 to authenticate requests and identify your organization.
+
+## Getting your API key
+
+1. Log in to the [Admin Console](https://app.deepidv.com)
+2. Navigate to **Settings** → **API Keys**
+3. Click **Generate API Key**
+4. Copy and store your key securely
+
+<Warning>
+  Your API key is shown only once at creation. Store it in a secure location such as an environment variable or secrets manager. If you lose your key, you'll need to generate a new one.
+</Warning>
+
+## Security best practices
+
+- **Never expose your API key in client-side code** — make API calls from your backend server only.
+- **Do not commit API keys to version control** — use environment variables or a secrets manager.
+- **Rotate keys regularly** — revoke old keys and generate new ones through the Admin Console.
+- **Use HTTPS only** — all API requests must be made over HTTPS.
+
+## Rate limits
+
+The API enforces rate limits to ensure fair usage and platform stability.
+
+| Limit | Value |
+|-------|-------|
+| Requests per second | 25 |
+| Burst capacity | 35 |
+| Daily request quota | 10,000 |
+
+If you exceed these limits, the API returns a `429 Too Many Requests` response. Implement exponential backoff in your integration to handle rate limiting gracefully.
+
+## Error responses
+
+If authentication fails, the API returns one of the following:
+
+| Status | Description |
+|--------|-------------|
+| `401 Unauthorized` | Missing or invalid API key |
+| `402 Payment Required` | Insufficient token balance in your organization |
+| `429 Too Many Requests` | Rate limit exceeded |

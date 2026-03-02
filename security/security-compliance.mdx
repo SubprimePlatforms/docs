@@ -1,0 +1,41 @@
+---
+title: Security & Compliance
+description: How deepidv protects your data and meets compliance standards
+---
+
+deepidv is built with security at every layer. From how data is transmitted and stored, to how access is controlled and audited, we follow industry best practices to protect sensitive identity and financial data.
+
+## Data encryption
+
+| Layer | Standard |
+|-------|----------|
+| **In transit** | All API traffic is encrypted via TLS 1.2+ (HTTPS enforced) |
+| **At rest** | All stored data is encrypted using AES-256 encryption |
+
+## Infrastructure security
+
+- **Cloud-hosted on AWS** — deepidv runs on Amazon Web Services with enterprise-grade infrastructure
+- **Private networking** — backend services operate within a private VPC with no direct public access
+- **API Gateway** — all requests pass through AWS API Gateway with rate limiting and request validation
+- **Access controls** — HMAC-based API key authentication with organization-level isolation
+
+## Data handling
+
+- **Multi-tenant isolation** — each organization's data is logically isolated; no cross-tenant access is possible
+- **Minimal data retention** — we only store what's necessary to deliver the service and meet compliance requirements
+- **Document storage** — uploaded identity documents and bank statements are stored in encrypted S3 buckets with restricted access
+- **Audit trail** — all actions are logged in [Audit Logs](/settings/audit-logs) for accountability and compliance reporting
+
+## Access control
+
+- **API key management** — generate, rotate, and revoke API keys from the Admin Console
+- **Organization-level permissions** — API keys are scoped to your organization and cannot access other tenants' data
+- **Admin Console authentication** — access to the console is protected with secure authentication
+
+## Compliance
+
+deepidv is designed to support compliance with applicable data protection regulations. If your organization requires specific certifications or compliance documentation, contact our team.
+
+<Card title="Contact us" icon="envelope" href="mailto:support@deepidv.com">
+  For compliance documentation, security questionnaires, or data processing agreements, reach out to our team.
+</Card>

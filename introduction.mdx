@@ -1,0 +1,51 @@
+---
+title: Introduction
+description: Full-Stack Modular Identity Verification
+---
+
+deepidv is a full-stack, modular identity verification platform that lets you verify identities, screen against global watchlists, and aggregate financial data — all through a single API or admin console.
+
+Build custom verification workflows by combining only the modules you need: document verification, face liveness detection, age estimation, PEP & sanctions screening, bank statement retrieval, and more.
+
+<CardGroup cols={3}>
+  <Card title="Identity Verification" icon="id-card">
+    Verify government-issued IDs, perform face liveness checks, estimate age, and screen against PEP & sanctions lists.
+  </Card>
+  <Card title="Financial Data" icon="building-columns">
+    Retrieve and analyze bank statements with AI-powered insights for credit decisioning and affordability checks.
+  </Card>
+  <Card title="Workflows" icon="diagram-project">
+    Configure reusable verification workflows that bundle the exact checks you need, then trigger them via API or verification link.
+  </Card>
+</CardGroup>
+
+## How it works
+
+<Steps>
+  <Step title="Create a workflow">
+    Select the verification modules you need — ID verification, liveness, sanctions screening, financial data — and save it as a reusable workflow.
+  </Step>
+  <Step title="Send a verification request">
+    Trigger a session via API or generate a verification link to send to your end user. Each session runs the checks defined in your workflow.
+  </Step>
+  <Step title="Review results">
+    Sessions are automatically verified or flagged for manual review. View results in the admin console, receive webhooks, or query the API.
+  </Step>
+</Steps>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first verification session in minutes.
+  </Card>
+  <Card title="API Authentication" icon="key" href="/authentication">
+    Set up your API keys and authenticate requests.
+  </Card>
+  <Card title="Services" icon="grid-2" href="/services">
+    Explore all available verification and financial modules.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/sessions/create-session">
+    Full reference for all API endpoints.
+  </Card>
+</CardGroup>

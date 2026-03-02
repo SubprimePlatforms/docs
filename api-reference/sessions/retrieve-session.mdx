@@ -1,0 +1,249 @@
+---
+title: Retrieve Session
+description: Retrieve a session by its ID
+api: GET /v1/sessions/{id}
+---
+
+```
+GET /v1/sessions/{id}
+```
+
+Retrieves the full details of a single verification session by its session ID, including analysis results and presigned URLs for uploaded documents.
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `x-api-key` | Yes | Your API key |
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | The session ID (returned as `idv_id` when the session was created) |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  {
+    headers: { "x-api-key": "YOUR_API_KEY" },
+  }
+);
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+```json
+{
+  "session_record": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "organization_id": "org_abc123",
+    "user_id": "usr_def456",
+    "sender_user_id": "usr_ghi789",
+    "external_id": "user-12345",
+    "status": "VERIFIED",
+    "type": "session",
+    "session_progress": "COMPLETED",
+    "created_at": "2025-01-15T10:30:00.000Z",
+    "updated_at": "2025-01-15T10:45:00.000Z",
+    "submitted_at": "2025-01-15T10:42:00.000Z",
+    "workflow_id": "wf_abc123",
+    "workflow_steps": ["ID_VERIFICATION", "FACE_LIVENESS", "PEP_SANCTIONS"],
+    "uploads": {
+      "id_front": true,
+      "id_back": true,
+      "selfie_front": true,
+      "selfie_right": false,
+      "selfie_left": false,
+      "faceliveness": true
+    },
+    "analysis_data": {
+      "id_matches_selfie": true,
+      "faceliveness_score": 98.5,
+      "id_analysis_data": {
+        "detect_face_data": [
+          {
+            "confidence": 99.8,
+            "age_range": { "high": 35, "low": 28 },
+            "gender": { "value": "Male", "confidence": 99.2 }
+          }
+        ],
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "John", "confidence": 99.1 },
+          { "type": "LAST_NAME", "value": "Doe", "confidence": 98.7 },
+          { "type": "DATE_OF_BIRTH", "value": "1990-05-15", "confidence": 97.3 }
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": true,
+        "age_restriction_pass": true
+      },
+      "pep_sanctions_data": {
+        "peps": [],
+        "sanctions": [],
+        "both": []
+      },
+      "compare_faces_data": {
+        "face_match_confidence": 99.2,
+        "face_match_result": {
+          "similarity": 99.2,
+          "face": {
+            "confidence": 99.9
+          }
+        }
+      }
+    },
+    "meta_data": {
+      "applicant_submission_ip": "192.168.1.1",
+      "applicant_submission_device": "iPhone 15",
+      "applicant_submission_browser": "Safari 17.2"
+    }
+  },
+  "resource_links": {
+    "idFront": "https://s3.amazonaws.com/...",
+    "idBack": "https://s3.amazonaws.com/...",
+    "selfieFront": "https://s3.amazonaws.com/..."
+  }
+}
+```
+
+### Top-level response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_record` | object | The full session object |
+| `resource_links` | object | Presigned S3 URLs for uploaded documents and images (valid for a limited time) |
+
+### Session object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique session identifier |
+| `organization_id` | string | Organization that owns this session |
+| `user_id` | string | User ID of the applicant |
+| `sender_user_id` | string | User ID of the person who created the session |
+| `external_id` | string | Your external reference ID (if provided) |
+| `permalink_id` | string | Permalink ID (if applicable) |
+| `location` | string | Applicant's location (if captured) |
+| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, or `VOIDED` |
+| `type` | string | `session` (workflow-based) or `verification` (standalone) |
+| `session_progress` | string | `PENDING`, `STARTED`, or `COMPLETED` |
+| `created_at` | string | ISO 8601 timestamp of session creation |
+| `updated_at` | string | ISO 8601 timestamp of last update |
+| `submitted_at` | string | ISO 8601 timestamp when the applicant submitted |
+| `workflow_id` | string | Workflow ID used for this session |
+| `workflow_steps` | string[] | List of workflow step IDs (e.g. `ID_VERIFICATION`, `FACE_LIVENESS`) |
+| `bank_statement_request_id` | string | Associated bank statement request ID |
+| `senior_mode` | boolean | Whether senior mode was enabled |
+| `document_id` | string | Associated document ID |
+| `deep_sign_id` | string | Associated e-sign ID |
+| `face_liveness_session_id` | string | Face liveness session ID |
+| `uploads` | object | Boolean flags for each uploaded document type |
+| `analysis_data` | object | Verification analysis results (see below) |
+| `meta_data` | object | Applicant submission metadata |
+
+### `meta_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `applicant_submission_ip` | string | IP address at time of submission |
+| `applicant_submission_device` | string | Device used for submission |
+| `applicant_view_time` | string | Time spent on verification page |
+| `applicant_submission_browser` | string | Browser used for submission |
+
+### `analysis_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `created_at` | string | When analysis was performed |
+| `id_analysis_data` | object | Primary ID document analysis |
+| `id_matches_selfie` | boolean | Whether the ID photo matches the selfie |
+| `faceliveness_score` | number | Liveness confidence score (0–100) |
+| `compare_faces_data` | object | Face comparison results |
+| `pep_sanctions_data` | object | PEP & sanctions screening results |
+| `adverse_media_data` | object | Adverse media screening results |
+| `secondary_id_analysis_data` | object | Secondary ID document analysis |
+| `tertiary_id_analysis_data` | object | Tertiary ID document analysis |
+| `selected_document_types` | object | Document types selected by applicant |
+| `document_risk_data` | object | Document fraud/risk analysis |
+| `title_search_data` | object | Property title search results |
+| `custom_form_data` | array | Custom form question/answer entries |
+
+### `id_analysis_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `detect_face_data` | array | Face detection results from the ID document |
+| `id_extracted_text` | array | Text fields extracted from the ID (name, DOB, ID number, etc.) |
+| `expiry_date_pass` | boolean | Whether the ID has not expired |
+| `valid_state_pass` | boolean | Whether the ID state/province is valid |
+| `age_restriction_pass` | boolean | Whether the applicant meets age requirements |
+
+### `pep_sanctions_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `peps` | array \| null | Matches against Politically Exposed Persons lists |
+| `sanctions` | array \| null | Matches against sanctions lists |
+| `both` | array \| null | Matches appearing on both PEP and sanctions lists |
+
+Each match item contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Matched name |
+| `country` | string | Country associated with the match |
+| `score` | number | Match confidence score |
+| `id` | string | Record ID in the source dataset |
+| `datasets` | string[] | Source datasets for this match |
+| `birth_date` | string | Date of birth (if available) |
+
+### `compare_faces_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `face_match_confidence` | number | Overall face match confidence (0–100) |
+| `face_match_result` | object | Detailed comparison result including `similarity` score and `face` details |
+
+### `document_risk_data` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `documents_analyzed` | number | Number of documents analyzed |
+| `documents_with_signals` | number | Number of documents with risk signals |
+| `overall_risk_score` | number | Aggregate risk score |
+| `analysis_timestamp` | string | When the risk analysis was performed |
+| `document_analysis` | array | Per-document analysis with risk signals, AI analysis, and metadata |
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| `400 Bad Request` | Invalid session ID format |
+| `401 Unauthorized` | Missing or invalid API key |
+| `403 Forbidden` | Session belongs to a different organization |
+| `404 Not Found` | Session ID does not exist |
+| `429 Too Many Requests` | Rate limit exceeded |

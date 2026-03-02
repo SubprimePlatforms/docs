@@ -1,0 +1,50 @@
+---
+title: Pricing
+description: deepidv token-based pricing
+---
+
+deepidv uses a simple, transparent token-based pricing model. Each service has a fixed cost per use — you only pay for what you consume.
+
+## How pricing works
+
+deepidv offers two plans:
+
+<CardGroup cols={2}>
+  <Card title="Pay-Per-Use" icon="coins">
+    The default plan. Purchase tokens upfront and they're deducted each time a service is used. Top up your balance at any time from the Admin Console.
+  </Card>
+  <Card title="Subscription" icon="calendar">
+    Subscribe to a monthly plan that includes a set number of sessions. Once your included sessions are used, additional usage is charged at pay-per-use rates.
+  </Card>
+</CardGroup>
+
+## Service pricing
+
+Each service is priced independently. When you use a [workflow](/workflows/workflows) that combines multiple services, the total cost is the sum of each included service.
+
+| Service | Cost per use |
+|---------|-------------|
+| ID Verification | $0.50 |
+| PEP & Sanctions Screening | $0.25 |
+| Age Estimation | $0.05 |
+| Face Liveness | $0.05 |
+| Bank Statement Sync | $1.10 |
+| AI Bank Statement Analysis | $0.95 |
+
+<Tip>
+  Combine services into workflows to run multiple checks in a single session. The total cost is simply the sum of each service used.
+</Tip>
+
+### Example
+
+A workflow that includes **ID Verification**, **Face Liveness**, and **PEP & Sanctions Screening** costs:
+
+```
+$0.50 + $0.05 + $0.25 = $0.80 per session
+```
+
+## Managing your balance
+
+- View your current token balance in the [Admin Console](https://app.deepidv.com)
+- Top up tokens at any time under **Settings** → **Billing**
+- If your balance reaches zero, API requests that create sessions will return a `402 Payment Required` error
