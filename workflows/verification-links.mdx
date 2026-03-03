@@ -3,64 +3,213 @@ title: Verification Links
 description: Generate and manage verification links
 ---
 
-Verification links are URLs that direct end users to complete their identity verification. deepidv supports two types of links: **session links** and **permalinks**.
+> Send secure verification URLs to your applicants — via email, SMS, or any channel you choose. No frontend development needed.
 
-## Session links
+export const SectionHeader = ({
+  label,
+  title,
+  description,
+  align = "left",
+}) => (
+  <div
+    className="deepidv-section-header"
+    style={{
+      textAlign: align,
+      alignItems: align === "center" ? "center" : "flex-start",
+    }}
+  >
+    {label && <p className="deepidv-section-label">{label}</p>}
+    <h2 className="deepidv-section-title">{title}</h2>
+    {description && <p className="deepidv-section-desc">{description}</p>}
+  </div>
+);
 
-Every session created through the API or Admin Console generates a unique, one-time verification link. This link is specific to a single session and a single applicant.
+export const FeatureGrid = ({ cols = 3, children }) => (
+  <div
+    className="deepidv-feature-grid"
+    style={{
+      "--grid-cols": cols,
+    }}
+  >
+    {children}
+  </div>
+);
+
+export const FeatureCard = ({ icon, title, description }) => (
+  <div className="deepidv-feature-card">
+    {icon && (
+      <div className="deepidv-feature-card-icon">
+        <Icon icon={icon} size={20} />
+      </div>
+    )}
+    <div className="deepidv-feature-card-content">
+      <h3 className="deepidv-feature-card-title">{title}</h3>
+      {description && (
+        <p className="deepidv-feature-card-desc">{description}</p>
+      )}
+    </div>
+  </div>
+);
+
+A verification link is a unique, secure URL that takes your applicant directly into a verification flow hosted by deepidv. You configure the checks in a [workflow](/workflows/workflows), and deepidv handles everything the applicant sees — document capture, liveness prompts, data collection, and more.
+
+deepidv supports two types of links: **session links** (one-time, per-applicant) and **permalinks** (reusable, persistent).
+
+---
+
+## How It Works
+
+<Steps>
+  <Step title="Set up your workflow">
+    In the [Admin Console](https://app.deepidv.com/dashboard/workflow), drag and drop the services you need into a workflow. Each workflow gets a unique `workflowId`.
+  </Step>
+
+  <Step title="Generate a verification link">
+    Create a session for your applicant — either **no-code** from the Admin Console, or **programmatically** via a single API call to the [Create Session](/api-reference/sessions/create-session) endpoint. Each session produces a unique verification URL.
+  </Step>
+
+  <Step title="Share the link">
+    Send the URL to your applicant through any channel — email, SMS, in-app message, or hand it off directly. deepidv can also send the invite automatically via email and SMS.
+  </Step>
+
+  <Step title="Get results">
+    Once the applicant completes the flow, results are available immediately in the Admin Console and via the [Retrieve Session](/api-reference/sessions/retrieve-session) API.
+  </Step>
+</Steps>
+
+---
+
+## Session Links
+
+Every session created through the API or Admin Console generates a **unique, one-time verification link**. This link is tied to a single session and a single applicant.
 
 When you create a session, the link is returned in the response:
 
 ```json
 {
-  "idv_id": "abc123-def456-ghi789",
-  "session_url": "https://api.deepidv.com/session/abc123-def456-ghi789",
+  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "session_url": "https://app.deepidv.com",
   "links": []
 }
 ```
 
-The `session_url` is the unique link for that session. If you enable email or SMS invites, this link is automatically sent to the applicant.
+If you enable email or SMS invites, deepidv automatically sends this link to the applicant for you.
 
-### How session links work
+---
 
-1. You create a session via the API or Admin Console
-2. The applicant receives the link via email, SMS, or you share it directly
-3. The applicant opens the link and completes the verification steps defined in the session's workflow
-4. Results are available in the Admin Console and via the API
+## Generating Session Links
 
-## Permalinks
+### Method 1: No-code (via Admin Console)
 
-Permalinks are persistent, reusable verification links tied to a specific user in your organization. Unlike session links, permalinks don't expire after a single use — they can be embedded on your website, shared in onboarding flows, or reused across multiple verification requests.
+The fastest way to get started — no developer resources required.
 
-### When to use permalinks
+1. Navigate to **Sessions** in the [Admin Console](https://app.deepidv.com)
+2. Click **+ Create Session**
+3. Select the workflow you want to use
+4. Enter the applicant's details (name, email, phone)
+5. The session is created and the invite is sent automatically
 
-- **Embed on your website** — place a verification link on a page where applicants can self-serve
-- **Onboarding emails** — include a consistent link in your welcome flow
-- **Repeat verifications** — allow the same applicant to re-verify without generating a new session manually
+### Method 2: Via API
 
-## Delivery methods
+The standard approach for automating verification links inside your application.
 
-When creating a session, you can control how the verification link is delivered:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `sendEmailInvite` | `true` | Sends the verification link to the applicant's email |
-| `sendPhoneInvite` | `true` | Sends the verification link via SMS |
-
-Set either to `false` if you want to deliver the link yourself:
+Send a `POST` request to the `/v1/sessions` endpoint with your API key and applicant details:
 
 ```bash
 curl -X POST https://api.deepidv.com/v1/sessions \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "phone": "+15192223333",
-    "sendEmailInvite": false,
-    "sendPhoneInvite": false
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "phone": "+14165557890",
+    "workflowId": "your-workflow-id"
   }'
 ```
 
-The `session_url` in the response gives you the link to share however you prefer.
+The API returns the `idv_id` and `session_url`:
+
+```json
+{
+  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "session_url": "https://app.deepidv.com",
+  "links": []
+}
+```
+
+<Info>
+  Full endpoint details are available in the [Create Session API Reference](/api-reference/sessions/create-session).
+</Info>
+
+---
+
+## Delivery Controls
+
+Control how the verification link reaches your applicant:
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `sendEmailInvite` | `true` | Sends the verification link to the applicant's email address |
+| `sendPhoneInvite` | `true` | Sends the verification link to the applicant via SMS |
+
+Set either to `false` if you'd rather deliver the link yourself:
+
+```bash
+curl -X POST https://api.deepidv.com/v1/sessions \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "phone": "+14165557890",
+    "sendEmailInvite": false,
+    "sendPhoneInvite": false,
+    "workflowId": "your-workflow-id"
+  }'
+```
+
+The `session_url` in the response gives you the link to share however you prefer — embed it in your app, paste it into a chat, or build your own email template.
+
+---
+
+## Permalinks
+
+Permalinks are **persistent, reusable verification links** tied to a specific workflow in your organization. Unlike session links, they don't expire after a single use — each time an applicant opens a permalink, a new session is created automatically.
+
+### When to use permalinks
+
+- **Embed on your website** — place a link on a landing page so applicants can start verification on their own
+- **Onboarding flows** — include a consistent link in welcome emails or signup sequences
+- **Repeat verifications** — let applicants re-verify without your team generating a new session each time
+- **In-person scenarios** — display as a QR code at a branch, event, or physical location
+
+---
+
+<SectionHeader
+  label="Why use verification links"
+  title={
+    <>
+      Ship verification <span>without building UI</span>
+    </>
+  }
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="rocket" title="Launch in hours" description="Go from zero to a live, compliant verification flow without writing any frontend code." />
+
+  <FeatureCard icon="code" title="No UI to maintain" description="deepidv handles the entire applicant-facing experience — document capture, liveness, data collection, and guidance." />
+
+  <FeatureCard icon="share-nodes" title="Send via any channel" description="Deliver links through email, SMS, WhatsApp, support chat, in-app messages, or embed directly on your site." />
+
+  <FeatureCard icon="qrcode" title="Works in-person too" description="Generate a QR code for walk-in scenarios where applicants need to verify on their own device." />
+</FeatureGrid>
+
+---
+
+## Next Steps
+
+- **Build your first workflow** — head to the [Admin Console](https://app.deepidv.com/dashboard/workflow) to design your verification flow
+- **Set up your API key** — see the [Authentication](/authentication) guide to start creating sessions programmatically
+- **Review session results** — learn how to review and manage sessions in the [Manual Review](/review/manual-review) guide

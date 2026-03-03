@@ -57,79 +57,6 @@ response = requests.get(
 
 ### 200 — Success
 
-```json
-{
-  "session_record": {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "organization_id": "org_abc123",
-    "user_id": "usr_def456",
-    "sender_user_id": "usr_ghi789",
-    "external_id": "user-12345",
-    "status": "VERIFIED",
-    "type": "session",
-    "session_progress": "COMPLETED",
-    "created_at": "2025-01-15T10:30:00.000Z",
-    "updated_at": "2025-01-15T10:45:00.000Z",
-    "submitted_at": "2025-01-15T10:42:00.000Z",
-    "workflow_id": "wf_abc123",
-    "workflow_steps": ["ID_VERIFICATION", "FACE_LIVENESS", "PEP_SANCTIONS"],
-    "uploads": {
-      "id_front": true,
-      "id_back": true,
-      "selfie_front": true,
-      "selfie_right": false,
-      "selfie_left": false,
-      "faceliveness": true
-    },
-    "analysis_data": {
-      "id_matches_selfie": true,
-      "faceliveness_score": 98.5,
-      "id_analysis_data": {
-        "detect_face_data": [
-          {
-            "confidence": 99.8,
-            "age_range": { "high": 35, "low": 28 },
-            "gender": { "value": "Male", "confidence": 99.2 }
-          }
-        ],
-        "id_extracted_text": [
-          { "type": "FIRST_NAME", "value": "John", "confidence": 99.1 },
-          { "type": "LAST_NAME", "value": "Doe", "confidence": 98.7 },
-          { "type": "DATE_OF_BIRTH", "value": "1990-05-15", "confidence": 97.3 }
-        ],
-        "expiry_date_pass": true,
-        "valid_state_pass": true,
-        "age_restriction_pass": true
-      },
-      "pep_sanctions_data": {
-        "peps": [],
-        "sanctions": [],
-        "both": []
-      },
-      "compare_faces_data": {
-        "face_match_confidence": 99.2,
-        "face_match_result": {
-          "similarity": 99.2,
-          "face": {
-            "confidence": 99.9
-          }
-        }
-      }
-    },
-    "meta_data": {
-      "applicant_submission_ip": "192.168.1.1",
-      "applicant_submission_device": "iPhone 15",
-      "applicant_submission_browser": "Safari 17.2"
-    }
-  },
-  "resource_links": {
-    "idFront": "https://s3.amazonaws.com/...",
-    "idBack": "https://s3.amazonaws.com/...",
-    "selfieFront": "https://s3.amazonaws.com/..."
-  }
-}
-```
-
 ### Top-level response
 
 | Field | Type | Description |
@@ -147,9 +74,9 @@ response = requests.get(
 | `sender_user_id` | string | User ID of the person who created the session |
 | `external_id` | string | Your external reference ID (if provided) |
 | `permalink_id` | string | Permalink ID (if applicable) |
-| `location` | string | Applicant's location (if captured) |
+| `location` | object | Applicant's location (if captured), e.g. `{ "country": "Canada" }` |
 | `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, or `VOIDED` |
-| `type` | string | `session` (workflow-based) or `verification` (standalone) |
+| `type` | string | `session` (workflow-based), `verification` (standalone), `credit-application` (ClearView), `silent-screening` (silent screening), or `deep-doc` (document transfer) |
 | `session_progress` | string | `PENDING`, `STARTED`, or `COMPLETED` |
 | `created_at` | string | ISO 8601 timestamp of session creation |
 | `updated_at` | string | ISO 8601 timestamp of last update |
@@ -157,8 +84,6 @@ response = requests.get(
 | `workflow_id` | string | Workflow ID used for this session |
 | `workflow_steps` | string[] | List of workflow step IDs (e.g. `ID_VERIFICATION`, `FACE_LIVENESS`) |
 | `bank_statement_request_id` | string | Associated bank statement request ID |
-| `senior_mode` | boolean | Whether senior mode was enabled |
-| `document_id` | string | Associated document ID |
 | `deep_sign_id` | string | Associated e-sign ID |
 | `face_liveness_session_id` | string | Face liveness session ID |
 | `uploads` | object | Boolean flags for each uploaded document type |
@@ -169,10 +94,10 @@ response = requests.get(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `applicant_submission_ip` | string | IP address at time of submission |
-| `applicant_submission_device` | string | Device used for submission |
-| `applicant_view_time` | string | Time spent on verification page |
-| `applicant_submission_browser` | string | Browser used for submission |
+| `applicantSubmissionIp` | string | IP address at time of submission |
+| `applicantSubmissionDevice` | string | Device used for submission |
+| `applicantViewTime` | string | ISO 8601 timestamp when the applicant viewed the verification page |
+| `applicantSubmissionBrowser` | string | Browser used for submission |
 
 ### `analysis_data` object
 
@@ -247,3 +172,413 @@ Each match item contains:
 | `403 Forbidden` | Session belongs to a different organization |
 | `404 Not Found` | Session ID does not exist |
 | `429 Too Many Requests` | Rate limit exceeded |
+
+<ResponseExample>
+```json 200
+{
+  "session_record": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "organization_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "user_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "sender_user_id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+    "status": "SUBMITTED",
+    "type": "session",
+    "session_progress": "COMPLETED",
+    "location": {
+      "country": "Canada"
+    },
+    "workflow_id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+    "bank_statement_request_id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+    "workflow_steps": ["ID_VERIFICATION", "FACE_LIVENESS", "PEP_SANCTIONS"],
+    "created_at": "2025-01-15T10:30:00.000Z",
+    "updated_at": "2025-01-15T10:45:00.000Z",
+    "submitted_at": "2025-01-15T10:42:00.000Z",
+    "meta_data": {
+      "applicantSubmissionIp": "192.168.1.1, 10.0.0.1",
+      "applicantSubmissionDevice": "Mac",
+      "applicantViewTime": "2025-01-15T10:35:00.000Z",
+      "applicantSubmissionBrowser": "Safari"
+    },
+    "uploads": {
+      "id_front": true,
+      "id_back": true,
+      "secondary_id_front": true,
+      "secondary_id_back": true,
+      "tertiary_id_front": true,
+      "tertiary_id_back": true,
+      "selfie_front": true,
+      "selfie_right": true,
+      "selfie_left": true,
+      "hold_up_3_fingers": true,
+      "pdf_summary": true
+    },
+    "analysis_data": {
+      "created_at": "2025-01-15T10:43:00.000Z",
+      "id_matches_selfie": true,
+      "faceliveness_score": 99.49,
+      "id_analysis_data": {
+        "detect_face_data": [
+          {
+            "confidence": 99.99,
+            "age_range": { "high": 35, "low": 28 },
+            "quality": { "brightness": 97.56, "sharpness": 38.90 },
+            "bounding_box": { "height": 0.32, "left": 0.11, "top": 0.33, "width": 0.19 },
+            "pose": { "pitch": 11.74, "yaw": 3.85, "roll": -2.84 },
+            "landmarks": [
+              { "x": 0.164, "y": 0.458, "type": "eyeLeft" },
+              { "x": 0.248, "y": 0.449, "type": "eyeRight" },
+              { "x": 0.215, "y": 0.507, "type": "nose" }
+            ],
+            "gender": { "value": "Male", "confidence": 91.22 }
+          }
+        ],
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "JOHN", "confidence": 97.64 },
+          { "type": "LAST_NAME", "value": "DOE", "confidence": 97.15 },
+          { "type": "MIDDLE_NAME", "value": "", "confidence": 99.15 },
+          { "type": "DATE_OF_BIRTH", "value": "1990/05/15", "confidence": 95.46 },
+          { "type": "EXPIRATION_DATE", "value": "2028/05/19", "confidence": 95.87 },
+          { "type": "DATE_OF_ISSUE", "value": "2023/06/30", "confidence": 95.40 },
+          { "type": "ID_TYPE", "value": "DRIVER LICENSE FRONT", "confidence": 90.02 },
+          { "type": "DOCUMENT_NUMBER", "value": "D123456789", "confidence": 0.66 },
+          { "type": "ADDRESS", "value": "123 MAIN ST", "confidence": 94.86 },
+          { "type": "CITY_IN_ADDRESS", "value": "SPRINGFIELD IL", "confidence": 66.81 },
+          { "type": "STATE_IN_ADDRESS", "value": "IL", "confidence": 47.99 },
+          { "type": "CLASS", "value": "G", "confidence": 97.54 },
+          { "type": "RESTRICTIONS", "value": "X", "confidence": 97.29 }
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": true,
+        "age_restriction_pass": true
+      },
+      "secondary_id_analysis_data": {
+        "detect_face_data": [
+          {
+            "confidence": 99.99,
+            "age_range": { "high": 35, "low": 28 },
+            "quality": { "brightness": 97.30, "sharpness": 38.90 },
+            "bounding_box": { "height": 0.30, "left": 0.12, "top": 0.35, "width": 0.18 },
+            "pose": { "pitch": 11.98, "yaw": 3.80, "roll": -2.13 },
+            "landmarks": [
+              { "x": 0.174, "y": 0.466, "type": "eyeLeft" },
+              { "x": 0.253, "y": 0.460, "type": "eyeRight" },
+              { "x": 0.219, "y": 0.513, "type": "nose" }
+            ],
+            "gender": { "value": "Male", "confidence": 87.16 }
+          }
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": false,
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "JOHN", "confidence": 97.63 },
+          { "type": "LAST_NAME", "value": "DOE", "confidence": 97.17 },
+          { "type": "DATE_OF_BIRTH", "value": "1990/05/15", "confidence": 94.95 },
+          { "type": "EXPIRATION_DATE", "value": "2028/05/19", "confidence": 95.64 },
+          { "type": "ID_TYPE", "value": "DRIVER LICENSE FRONT", "confidence": 94.87 },
+          { "type": "DOCUMENT_NUMBER", "value": "D123456789", "confidence": 90.14 }
+        ],
+        "age_restriction_pass": true
+      },
+      "tertiary_id_analysis_data": {
+        "detect_face_data": [
+          {
+            "confidence": 99.99,
+            "age_range": { "high": 35, "low": 28 },
+            "quality": { "brightness": 97.39, "sharpness": 38.90 },
+            "bounding_box": { "height": 0.30, "left": 0.14, "top": 0.36, "width": 0.18 },
+            "pose": { "pitch": 11.39, "yaw": 3.27, "roll": -3.04 },
+            "landmarks": [
+              { "x": 0.191, "y": 0.479, "type": "eyeLeft" },
+              { "x": 0.270, "y": 0.472, "type": "eyeRight" },
+              { "x": 0.239, "y": 0.526, "type": "nose" }
+            ],
+            "gender": { "value": "Male", "confidence": 92.90 }
+          }
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": false,
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "JOHN", "confidence": 97.60 },
+          { "type": "LAST_NAME", "value": "DOE", "confidence": 97.15 },
+          { "type": "DATE_OF_BIRTH", "value": "1990/05/15", "confidence": 95.75 },
+          { "type": "EXPIRATION_DATE", "value": "2028/05/19", "confidence": 95.78 },
+          { "type": "ID_TYPE", "value": "DRIVER LICENSE FRONT", "confidence": 92.32 },
+          { "type": "DOCUMENT_NUMBER", "value": "D123456789", "confidence": 90.11 }
+        ],
+        "age_restriction_pass": true
+      },
+      "pep_sanctions_data": {
+        "peps": [
+          {
+            "name": "John Smith",
+            "country": "United Kingdom",
+            "score": 1,
+            "id": "Q180589",
+            "datasets": ["ann_pep_positions", "wd_peps"],
+            "birth_date": "1964-06-19"
+          },
+          {
+            "name": "Jane Smith",
+            "country": "Unknown",
+            "score": 0.776,
+            "id": "Q19360548",
+            "datasets": ["wd_peps", "ann_pep_positions"],
+            "birth_date": "1923-06-23"
+          }
+        ],
+        "sanctions": null,
+        "both": null
+      },
+      "compare_faces_data": {
+        "face_match_confidence": 99.92,
+        "face_match_result": {
+          "face": {
+            "landmarks": [
+              { "x": 0.164, "y": 0.458, "type": "eyeLeft" },
+              { "x": 0.248, "y": 0.449, "type": "eyeRight" },
+              { "x": 0.215, "y": 0.507, "type": "nose" }
+            ],
+            "confidence": 99.99,
+            "quality": { "brightness": 97.56, "sharpness": 38.90 },
+            "bounding_box": { "height": 0.32, "left": 0.11, "top": 0.33, "width": 0.19 },
+            "pose": { "pitch": 11.74, "yaw": 3.85, "roll": -2.84 }
+          },
+          "similarity": 99.92
+        }
+      },
+      "adverse_media_data": {
+        "total_hits": 10,
+        "news_exposures": {
+          "violent_crime": {
+            "category": "violent_crime",
+            "hits": 2,
+            "articles": [
+              {
+                "source": "serper",
+                "headline": "Example headline about violent crime",
+                "source_link": "https://example.com/article-1",
+                "timestamp": "3 weeks ago"
+              }
+            ]
+          },
+          "terrorism": { "category": "terrorism", "hits": 0, "articles": [] },
+          "regulatory": { "category": "regulatory", "hits": 0, "articles": [] },
+          "financial_crime": { "category": "financial_crime", "hits": 0, "articles": [] },
+          "political": { "category": "political", "hits": 0, "articles": [] },
+          "uncategorized": {
+            "category": "uncategorized",
+            "hits": 6,
+            "articles": [
+              {
+                "source": "serper",
+                "headline": "Example uncategorized article headline",
+                "source_link": "https://example.com/article-2",
+                "timestamp": "Sep 14, 2025"
+              }
+            ]
+          },
+          "organized_crime": { "category": "organized_crime", "hits": 0, "articles": [] },
+          "criminal_legal": {
+            "category": "criminal_legal",
+            "hits": 2,
+            "articles": [
+              {
+                "source": "serper",
+                "headline": "Example criminal legal article headline",
+                "source_link": "https://example.com/article-3",
+                "timestamp": "Sep 9, 2025"
+              }
+            ]
+          }
+        },
+        "timestamp": "2025-01-15T10:43:16.338Z"
+      },
+      "selected_document_types": {
+        "secondary": "passport",
+        "tertiary": "pr_card",
+        "primary": "drivers_license"
+      },
+      "document_risk_data": {
+        "document_analysis": [
+          {
+            "expected_document_name": "Articles of Incorporation",
+            "metadata": {
+              "creator": "Microsoft\u00ae Word for Microsoft 365",
+              "mod_date": "2022-04-14T03:02:41.000Z",
+              "page_count": 1,
+              "encrypted": false,
+              "author": "John Doe",
+              "producer": "Microsoft\u00ae Word for Microsoft 365",
+              "creation_date": "2022-04-14T03:02:41.000Z",
+              "title": null
+            },
+            "signals": [
+              {
+                "severity": "high",
+                "weight": 45,
+                "code": "DOCUMENT_TYPE_MISMATCH",
+                "evidence": {
+                  "mismatch_details": "The uploaded document does not match the expected document type 'Articles of Incorporation'.",
+                  "detected_type": "Other",
+                  "ai_confidence": 1,
+                  "expected_type": "Articles of Incorporation"
+                },
+                "message": "Uploaded document does not match the expected document type"
+              }
+            ],
+            "document_key": "b2c3d4e5-f6a7-8901-bcde-f12345678901/a1b2c3d4-e5f6-7890-abcd-ef1234567890/1772386555165-pdf",
+            "field_label": "document_1",
+            "total_weight": 0,
+            "max_possible_weight": 190,
+            "ai_analysis": {
+              "overall_assessment": "likely_fabricated",
+              "claimed_dates": {
+                "document_date": null,
+                "statement_period": null,
+                "transaction_dates": []
+              },
+              "content_analysis": {
+                "expected_document_type": "Articles of Incorporation",
+                "content_quality": "complete",
+                "document_type": "Other",
+                "issuing_entity": null
+              },
+              "document_type_mismatch_details": "The uploaded document does not match the expected document type.",
+              "confidence": 1,
+              "date_mismatch_details": null,
+              "date_mismatch_detected": false,
+              "document_type_mismatch": true,
+              "reasoning": "The document provided does not match the expected 'Articles of Incorporation'. This represents a critical document type mismatch.",
+              "suspicious_patterns": [
+                {
+                  "severity": "high",
+                  "type": "Document Content Irrelevance",
+                  "description": "The document content does not match 'Articles of Incorporation' as expected."
+                }
+              ],
+              "risk_score": 95,
+              "risk_indicators": [
+                "Document type mismatch",
+                "Irrelevant content submitted"
+              ]
+            },
+            "risk_score": 95,
+            "status_message": null,
+            "status": "ok"
+          }
+        ],
+        "analysis_timestamp": "2025-01-15T10:43:21.588Z",
+        "documents_with_signals": 1,
+        "overall_risk_score": 95,
+        "documents_analyzed": 1
+      },
+      "title_search_data": {
+        "last_market_sale_information": {
+          "sale_type": "",
+          "first_mortgage_amount": null,
+          "sale_date": "2010-10-19T00:00:00",
+          "sale_price": 38000,
+          "deed_type": "WARRANTY DEED",
+          "buyer_name": "SMITH,JOHN & JANE",
+          "seller_name": "JOHNSON,ROBERT",
+          "recording_date": "2010-12-15T00:00:00",
+          "book_page": "47589.183",
+          "current_through_date": "2026-02-17T00:00:00"
+        },
+        "owner_transfer_information": {
+          "current_through_date": "2026-02-17T00:00:00",
+          "sale_date": "2020-02-20T00:00:00",
+          "recording_sale_date": "2021-05-07T00:00:00",
+          "buyer_name": "SMITH JANE L",
+          "sale_price": null,
+          "deed_type": "QUIT CLAIM DEED",
+          "seller_name": "SMITH JOHN S"
+        },
+        "owner_information": {
+          "owner_names": "SMITH JANE L",
+          "owner1_full_name": "SMITH JANE L",
+          "owner2_full_name": "",
+          "occupancy": "Absentee Owner",
+          "owner_occupied_indicator": "N",
+          "mailing_address": {
+            "street_address": "1170 OAK CT",
+            "city": "SPRINGFIELD",
+            "state": "IL",
+            "zip9": "62701-2804",
+            "mail_carrier_route": "R006"
+          },
+          "owner_vesting_info": {
+            "vesting_owner": "SINGLE WOMAN",
+            "vesting_etal": "",
+            "vesting_ownership_right": ""
+          }
+        },
+        "subject_property": {
+          "property_id": 29002737,
+          "parsed_street_address": {
+            "street_name": "PINEWALK",
+            "direction_suffix": "N",
+            "standardized_house_number": 3330,
+            "street_suffix": "DR",
+            "apartment_or_unit": "1613"
+          },
+          "situs_address": {
+            "street_address": "3330 PINEWALK DR N #1613",
+            "state": "FL",
+            "city": "MARGATE",
+            "county": "BROWARD",
+            "zip9": "33063-9338",
+            "apn": "48-41-23-BC-2950"
+          }
+        },
+        "location_information": {
+          "census_tract": "020204",
+          "neighborhood_name": "CORAL KEY",
+          "subdivision": "CORAL KEY CONDO",
+          "municipality_township": "MARGATE",
+          "latitude": 26.26596,
+          "longitude": -80.228435,
+          "school_district": "BROWARD",
+          "legal_description": "CORAL KEY CONDO UNIT 1613 BLDG 16",
+          "county_fips": 12011
+        },
+        "title_search_address_details": {
+          "address_components": [
+            { "long_name": "3330", "short_name": "3330", "types": ["street_number"] },
+            { "long_name": "Pinewalk Drive North", "short_name": "Pinewalk Dr N", "types": ["route"] },
+            { "long_name": "Margate", "short_name": "Margate", "types": ["locality", "political"] },
+            { "long_name": "Broward County", "short_name": "Broward County", "types": ["administrative_area_level_2", "political"] },
+            { "long_name": "Florida", "short_name": "FL", "types": ["administrative_area_level_1", "political"] },
+            { "long_name": "United States", "short_name": "US", "types": ["country", "political"] },
+            { "long_name": "33063", "short_name": "33063", "types": ["postal_code"] }
+          ],
+          "formatted_address": "3330 Pinewalk Drive North, Margate, FL, USA",
+          "unit_number": "1613"
+        }
+      },
+      "custom_form_data": [
+        {
+          "question": "What is your Company Business Number",
+          "answer": "1234567890",
+          "type": "short-text"
+        }
+      ]
+    }
+  },
+  "resource_links": {
+    "id_back": "https://s3.amazonaws.com/...",
+    "secondary_id_front": "https://s3.amazonaws.com/...",
+    "secondary_id_back": "https://s3.amazonaws.com/...",
+    "pdf_summary": "https://s3.amazonaws.com/...",
+    "selfie_front": "https://s3.amazonaws.com/...",
+    "tertiary_id_front": "https://s3.amazonaws.com/...",
+    "tertiary_id_back": "https://s3.amazonaws.com/...",
+    "selfie_right": "https://s3.amazonaws.com/...",
+    "id_front": "https://s3.amazonaws.com/...",
+    "Hold up 3 fingers": "https://s3.amazonaws.com/...",
+    "selfie_left": "https://s3.amazonaws.com/...",
+    "document_1": "https://s3.amazonaws.com/..."
+  }
+}
+```
+</ResponseExample>

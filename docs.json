@@ -7,7 +7,8 @@
     "light": "#22B8F0",
     "dark": "#1456A0"
   },
-  "favicon": "/logo/deepidv-logo.png",
+  "favicon": "/favicon.ico",
+  "css": "/custom.css",
   "navigation": {
     "tabs": [
       {
@@ -67,7 +68,37 @@
             "pages": [
               "api-reference/sessions/create-session",
               "api-reference/sessions/retrieve-session",
-              "api-reference/sessions/list-sessions"
+              "api-reference/sessions/list-sessions",
+              "api-reference/sessions/update-session-status"
+            ]
+          },
+          {
+            "group": "Financial",
+            "pages": [
+              "api-reference/financial/retrieve-bank-statement",
+              "api-reference/financial/list-bank-statements",
+              "api-reference/financial/retrieve-bank-statement-by-external-id"
+            ]
+          },
+          {
+            "group": "Management API 🔧",
+            "pages": [
+              "api-reference/workflows/list-workflows",
+              "api-reference/workflows/retrieve-workflow"
+            ]
+          },
+          {
+            "group": "Silent Screening (Coming Soon!)",
+            "pages": [
+              "api-reference/silent-screening/pep-sanctions",
+              "api-reference/silent-screening/adverse-media",
+              "api-reference/silent-screening/title-check"
+            ]
+          },
+          {
+            "group": "Server-to-Server (Coming Soon!)",
+            "pages": [
+              "api-reference/server-to-server/overview"
             ]
           }
         ]
@@ -108,7 +139,9 @@
     }
   },
   "api": {
-    "baseUrl": "https://api.deepidv.com",
+    "mdx": {
+      "server": "https://api.deepidv.com"
+    },
     "auth": {
       "method": "key",
       "name": "x-api-key"

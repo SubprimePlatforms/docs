@@ -1,0 +1,147 @@
+/* ── Section Headers ── */
+.deepidv-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.deepidv-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1E7FE0;
+  margin: 0;
+}
+
+.deepidv-section-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.deepidv-section-title span {
+  color: #1E7FE0;
+}
+
+.deepidv-section-desc {
+  font-size: 1rem;
+  color: #6B7280;
+  margin: 0.25rem 0 0 0;
+}
+
+/* ── Feature Grid ── */
+.deepidv-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 3), 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .deepidv-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Feature Cards ── */
+.deepidv-feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  height: 100%;
+}
+
+:root.dark .deepidv-feature-card {
+  background: #1a1a2e;
+  border-color: #2d2d44;
+}
+
+.deepidv-feature-card:hover {
+  border-color: #1E7FE0;
+  box-shadow: 0 2px 8px rgba(30, 127, 224, 0.08);
+}
+
+/* Icon */
+.deepidv-feature-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #EBF4FE;
+  color: #1E7FE0;
+  flex-shrink: 0;
+}
+
+:root.dark .deepidv-feature-card-icon {
+  background: rgba(30, 127, 224, 0.15);
+}
+
+/* Content */
+.deepidv-feature-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.deepidv-feature-card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.deepidv-feature-card-desc {
+  font-size: 0.825rem;
+  color: #6B7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+:root.dark .deepidv-feature-card-desc {
+  color: #9CA3AF;
+}
+
+/* Arrow for linked cards */
+.deepidv-feature-card-arrow {
+  margin-top: auto;
+  color: #1E7FE0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.deepidv-feature-card:hover .deepidv-feature-card-arrow {
+  opacity: 1;
+}
+
+/* ── Video Embed ── */
+.deepidv-video-embed {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.deepidv-video-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+}

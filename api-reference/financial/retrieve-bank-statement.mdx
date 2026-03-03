@@ -1,0 +1,201 @@
+---
+title: Retrieve Bank Statement
+description: Retrieve a bank statement request by ID
+api: GET /v1/financial/{id}
+---
+
+```
+GET /v1/financial/{id}
+```
+
+Retrieves a bank statement request by its ID. If the request is completed, the response includes the full bank statement data with account details and transaction history.
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `x-api-key` | Yes | Your API key |
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | The bank statement request ID |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.deepidv.com/v1/financial/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/financial/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  {
+    headers: { "x-api-key": "YOUR_API_KEY" },
+  }
+);
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/financial/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+### Bank statement record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique bank statement identifier |
+| `organizationId` | string | Organization that owns this request |
+| `userId` | string | User ID of the applicant |
+| `senderUserId` | string | User ID of the person who created the request |
+| `externalId` | string | Your external reference ID (if provided) |
+| `status` | string | `PENDING`, `IN_PROGRESS`, `FLINKS_IN_PROGRESS`, or `COMPLETED` |
+| `type` | string | `request` or `upload` |
+| `Config` | object | Request configuration (e.g. `{ "period": "6" }`) |
+| `createdAt` | string | ISO 8601 creation timestamp |
+| `updatedAt` | string | ISO 8601 last-updated timestamp |
+| `statement` | object | Bank statement data (only present when status is `COMPLETED` and type is `request`) |
+
+### `statement` object
+
+Included only when the applicant has completed the bank connection. Sensitive fields (`TransitNumber`, `InstitutionNumber`) are stripped from account data.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `HttpStatusCode` | number | Status code from the bank data provider |
+| `InstitutionName` | string | Name of the financial institution |
+| `InstitutionId` | number | Identifier for the financial institution |
+| `Institution` | string | Institution code |
+| `Accounts` | array | Array of account objects with transaction history |
+
+### Account object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Id` | string | Account identifier |
+| `Title` | string | Account title/name |
+| `AccountNumber` | string | Full account number |
+| `LastFourDigits` | string \| null | Last four digits of account number |
+| `Category` | string | Account category (e.g. `Operations`) |
+| `Type` | string | Account type (e.g. `Chequing`, `CreditCard`) |
+| `AccountType` | string | Detailed account type |
+| `Currency` | string | Account currency (e.g. `CAD`) |
+| `Balance` | object | Account balances: `Available`, `Current`, `Limit` |
+| `Holder` | object | Account holder info: `Name`, `Address`, `Email`, `PhoneNumber` |
+| `Transactions` | array | Array of transaction objects |
+
+### Transaction object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Id` | string | Transaction identifier |
+| `Date` | string | Transaction date |
+| `Description` | string | Transaction description |
+| `Debit` | number \| null | Debit amount (if applicable) |
+| `Credit` | number \| null | Credit amount (if applicable) |
+| `Balance` | number | Running balance after transaction |
+| `Code` | string \| null | Transaction code |
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| `400 Bad Request` | Invalid bank statement ID format |
+| `401 Unauthorized` | Missing or invalid API key |
+| `403 Forbidden` | Bank statement belongs to a different organization |
+| `404 Not Found` | Bank statement ID does not exist |
+| `429 Too Many Requests` | Rate limit exceeded |
+
+<ResponseExample>
+```json 200
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "organizationId": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
+  "userId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "senderUserId": "d4e5f6a7-b8c9-0123-defa-234567890123",
+  "externalId": "loan-app-12345",
+  "status": "COMPLETED",
+  "type": "request",
+  "Config": {
+    "period": "6"
+  },
+  "createdAt": "2026-02-15T14:30:00.000Z",
+  "updatedAt": "2026-02-15T15:00:00.000Z",
+  "statement": {
+    "HttpStatusCode": 200,
+    "InstitutionName": "Royal Bank of Canada",
+    "InstitutionId": 3,
+    "Institution": "RBC",
+    "Accounts": [
+      {
+        "Id": "acct_123456",
+        "Title": "Chequing Account",
+        "AccountNumber": "1234567890",
+        "LastFourDigits": "7890",
+        "Category": "Operations",
+        "Type": "Chequing",
+        "AccountType": "PersonalChequing",
+        "Currency": "CAD",
+        "Balance": {
+          "Available": 5230.45,
+          "Current": 5230.45,
+          "Limit": null
+        },
+        "Holder": {
+          "Name": "JOHN DOE",
+          "Address": {
+            "CivicAddress": "123 Main St",
+            "City": "Toronto",
+            "Province": "ON",
+            "PostalCode": "M5V 2T6",
+            "POBox": null,
+            "Country": "CA"
+          },
+          "Email": "john.doe@example.com",
+          "PhoneNumber": "+15192223333"
+        },
+        "Transactions": [
+          {
+            "Id": "txn_001",
+            "Date": "2026-02-14",
+            "Description": "PAYROLL DEPOSIT",
+            "Debit": null,
+            "Credit": 3200.00,
+            "Balance": 5230.45,
+            "Code": null
+          },
+          {
+            "Id": "txn_002",
+            "Date": "2026-02-13",
+            "Description": "GROCERY STORE",
+            "Debit": 87.32,
+            "Credit": null,
+            "Balance": 2030.45,
+            "Code": null
+          }
+        ],
+        "Statements": [],
+        "OverdraftLimit": 500
+      }
+    ]
+  }
+}
+```
+</ResponseExample>

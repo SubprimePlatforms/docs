@@ -3,49 +3,193 @@ title: Introduction
 description: Full-Stack Modular Identity Verification
 ---
 
-deepidv is a full-stack, modular identity verification platform that lets you verify identities, screen against global watchlists, and aggregate financial data — all through a single API or admin console.
+> Modular identity verification platform built for developers — verify users, screen watchlists, and analyze financial data without the overhead.
 
-Build custom verification workflows by combining only the modules you need: document verification, face liveness detection, age estimation, PEP & sanctions screening, bank statement retrieval, and more.
+export const VideoEmbed = ({ src, title = "Video" }) => (
+  <div className="deepidv-video-embed">
+    <iframe
+      src={src}
+      title={title}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+    />
+  </div>
+);
 
-<CardGroup cols={3}>
-  <Card title="Identity Verification" icon="id-card">
-    Verify government-issued IDs, perform face liveness checks, estimate age, and screen against PEP & sanctions lists.
-  </Card>
-  <Card title="Financial Data" icon="building-columns">
-    Retrieve and analyze bank statements with AI-powered insights for credit decisioning and affordability checks.
-  </Card>
-  <Card title="Workflows" icon="diagram-project">
-    Configure reusable verification workflows that bundle the exact checks you need, then trigger them via API or verification link.
-  </Card>
-</CardGroup>
+export const SectionHeader = ({
+  label,
+  title,
+  description,
+  align = "left",
+}) => (
+  <div
+    className="deepidv-section-header"
+    style={{
+      textAlign: align,
+      alignItems: align === "center" ? "center" : "flex-start",
+    }}
+  >
+    {label && <p className="deepidv-section-label">{label}</p>}
+    <h2 className="deepidv-section-title">{title}</h2>
+    {description && <p className="deepidv-section-desc">{description}</p>}
+  </div>
+);
 
-## How it works
+export const FeatureGrid = ({ cols = 3, children }) => (
+  <div
+    className="deepidv-feature-grid"
+    style={{
+      "--grid-cols": cols,
+    }}
+  >
+    {children}
+  </div>
+);
 
-<Steps>
-  <Step title="Create a workflow">
-    Select the verification modules you need — ID verification, liveness, sanctions screening, financial data — and save it as a reusable workflow.
-  </Step>
-  <Step title="Send a verification request">
-    Trigger a session via API or generate a verification link to send to your end user. Each session runs the checks defined in your workflow.
-  </Step>
-  <Step title="Review results">
-    Sessions are automatically verified or flagged for manual review. View results in the admin console, receive webhooks, or query the API.
-  </Step>
-</Steps>
+export const FeatureCard = ({ icon, title, description, href }) => {
+  const inner = (
+    <div className="deepidv-feature-card">
+      {icon && (
+        <div className="deepidv-feature-card-icon">
+          <Icon icon={icon} size={20} />
+        </div>
+      )}
+      <div className="deepidv-feature-card-content">
+        <h3 className="deepidv-feature-card-title">{title}</h3>
+        {description && (
+          <p className="deepidv-feature-card-desc">{description}</p>
+        )}
+      </div>
+      {href && (
+        <div className="deepidv-feature-card-arrow">
+          <Icon icon="arrow-right" size={14} />
+        </div>
+      )}
+    </div>
+  );
+  if (href) {
+    return (
+      <a
+        href={href}
+        style={{
+          textDecoration: "none",
+          color: "inherit",
+          display: "block",
+          border: "none",
+          boxShadow: "none",
+        }}
+      >
+        {inner}
+      </a>
+    );
+  }
+  return inner;
+};
 
-## Get started
+## Why Traditional Verification Falls Short
+
+Most identity verification tools were designed for banks a decade ago — not for the products being built today:
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="mask" title="Blind to modern fraud vectors" description="Legacy pipelines weren't built to catch deepfakes, synthetic IDs, or AI-generated documents." />
+
+  <FeatureCard icon="terminal" title="Painful developer experience" description="Outdated SDKs, incomplete docs, and integrations that take sprints instead of sessions." />
+
+  <FeatureCard icon="clock" title="Manual review bottlenecks" description="Human-dependent workflows slow down approvals, introduce bias, and collapse under volume." />
+
+  <FeatureCard icon="coins" title="High per-check costs" description="$2–$5 per verification, locked behind annual contracts and minimum volumes that punish smaller teams." />
+
+  <FeatureCard icon="lock" title="Zero pricing transparency" description="No public rates, no self-serve access — just weeks of sales calls before you can test anything." />
+
+  <FeatureCard icon="cubes" title="All-or-nothing packages" description="Forced into monolithic KYC bundles when you only need a liveness check or a document scan." />
+</FeatureGrid>
+
+---
+
+<SectionHeader
+  label="The Solution"
+  title={
+    <>
+      deepidv — The Identity Layer for the <span>Modern Internet</span>
+    </>
+  }
+/>
+
+<VideoEmbed
+  src="https://www.youtube.com/embed/WZKB8tmmnFM?rel=0&playsinline=1"
+  title="deepidv Platform Overview"
+/>
+
+deepidv is a **modular, API-first identity verification platform** — built to give developers full control over what they verify, how they verify it, and what they pay.
+
+No bloated bundles. No sales gates.
+Pick the modules you need, connect them through workflows, and go live.
+
+<SectionHeader
+  label="Our Principles"
+  title={
+    <>
+      Engineered to be <span>different</span>
+    </>
+  }
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="puzzle-piece" title="Fully Modular" description="Compose verification flows from individual services — ID checks, liveness, AML screening, financial data — and nothing you don't need." />
+
+  <FeatureCard icon="code" title="Developer-First" description="Public docs, straightforward APIs, code samples in every language. Ship an integration in an afternoon." />
+
+  <FeatureCard icon="microchip" title="AI-Powered Analysis" description="Automated document validation, face comparison, and risk scoring — minimal manual intervention required." />
+
+  <FeatureCard icon="money-bill" title="Transparent Pay-Per-Use" description="Published rates for every service. Top up tokens, pay only for completed checks. No contracts or minimums." />
+
+  <FeatureCard icon="arrow-up-right-dots" title="Scales With You" description="The same platform works whether you're running 10 verifications a month or 10,000 a day." />
+
+  <FeatureCard icon="shield-check" title="Secure by Default" description="AES-256 encryption at rest, TLS 1.2+ in transit, multi-tenant isolation, and complete audit trails." />
+</FeatureGrid>
+
+---
+
+<SectionHeader
+  label="Use Cases"
+  title={
+    <>
+      What you can <span>build</span> with deepidv
+    </>
+  }
+  description="deepidv isn't a single-purpose KYC tool. It's verification infrastructure you can shape to fit any trust workflow."
+/>
+
+<FeatureGrid cols={3}>
+  <FeatureCard icon="user-plus" title="Customer Onboarding" description="Verify new users during signup with document checks, selfie matching, and sanctions screening in one flow." />
+
+  <FeatureCard icon="cake-candles" title="Age Verification" description="Confirm user age for regulated content, products, or services using AI-powered age estimation." />
+
+  <FeatureCard icon="ban" title="Fraud Prevention" description="Detect forged documents, deepfake selfies, and synthetic identities before they enter your platform." />
+
+  <FeatureCard icon="shield-check" title="PEP & Sanctions Screening" description="Screen applicants against global watchlists, politically exposed persons databases, and sanctions registries." />
+
+  <FeatureCard icon="building-columns" title="Financial Data Aggregation" description="Pull bank statements and run AI-driven analysis for credit decisions, affordability checks, and underwriting." />
+
+  <FeatureCard icon="diagram-project" title="Custom Verification Workflows" description="Chain multiple checks into reusable workflows — trigger them via API or shareable verification links." />
+</FeatureGrid>
+
+---
+
+## Getting Started
+
+1. **Create your account** — sign up at the [Admin Console](https://app.deepidv.com) and grab your API key.
+2. **Pick your integration path**:
+   - **Verification sessions** (recommended) — hosted flows your users complete via link or embed
+   - **Direct API calls** — for server-to-server or fully custom implementations *(Coming soon!)*
+3. **Go live** — run your first real verification in minutes.
 
 <CardGroup cols={2}>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Create your first verification session in minutes.
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Go from zero to your first verification session in under 5 minutes.
   </Card>
-  <Card title="API Authentication" icon="key" href="/authentication">
-    Set up your API keys and authenticate requests.
-  </Card>
-  <Card title="Services" icon="grid-2" href="/services">
-    Explore all available verification and financial modules.
-  </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/sessions/create-session">
-    Full reference for all API endpoints.
+
+  <Card title="Explore All Services" icon="grid-2" href="/services">
+    Browse every verification and financial module available on the platform.
   </Card>
 </CardGroup>

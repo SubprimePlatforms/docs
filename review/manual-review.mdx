@@ -3,54 +3,179 @@ title: Manual Review
 description: Manually review and manage verification sessions
 ---
 
-Not every verification can be fully automated. The Manual Review feature in the Admin Console lets your team inspect flagged sessions, compare submitted documents against extracted data, and make a final decision.
+> Review flagged sessions, inspect verification badges, and make informed approve or reject decisions from the Admin Console.
 
-## Session statuses
+Not every verification is black and white. When deepidv's automated checks surface warnings or edge cases, sessions land in **Submitted** status for your team to review. This guide walks through the full manual review process — what to look at, how to evaluate it, and when to approve, reject, or void.
 
-Every session moves through a lifecycle of statuses:
+---
 
-| Status | Description |
-|--------|-------------|
-| **Pending** | Session created, waiting for the applicant to begin |
-| **Submitted** | Applicant has completed the verification steps; awaiting review |
-| **Verified** | Session approved — the applicant passed all checks |
-| **Rejected** | Session denied — one or more checks failed or were flagged |
-| **Voided** | Session invalidated and excluded from reporting |
+## Session Statuses
 
-## Reviewing a session
+Every session moves through a lifecycle:
 
-1. Log in to the [Admin Console](https://app.deepidv.com)
-2. Navigate to **Sessions** to view all sessions for your organization
-3. Filter by status to find sessions that need review (e.g. **Submitted**)
-4. Click on a session to open the detail view
+| Status | What it means |
+| --- | --- |
+| **Pending** | Session created — the applicant hasn't started yet |
+| **Submitted** | Applicant finished the flow — ready for your review |
+| **Verified** | Approved — all checks passed or were manually accepted |
+| **Rejected** | Denied — one or more checks failed your review criteria |
+| **Voided** | Invalidated — excluded from reporting (test sessions, duplicates, etc.) |
 
-### What you'll see
+---
 
-The session detail view shows:
+## Verification Badges
 
-- **Applicant information** — name, email, phone, and any external ID you provided
-- **Submitted documents** — uploaded ID images and selfie photos
-- **Verification results** — outcomes from each service (ID check, liveness, PEP screening, etc.)
-- **Session metadata** — timestamps, workflow used, and session progress
+When you open a session, deepidv displays a grid of **verification badges** — each one representing a check that ran during the session. Badges show a green checkmark for passing results or a red X for failures, giving you an at-a-glance summary before you dig deeper.
 
-### Taking action
+<Frame>
+  <img src="/images/badges_session.png" alt="deepidv verification badges showing check results" />
+</Frame>
 
-From the session detail view, you can:
+Here's what each badge covers:
 
-- **Verify** — approve the session if you're satisfied with the results
-- **Reject** — deny the session if the applicant fails your review criteria
-- **Void** — invalidate the session entirely (useful for test sessions or duplicates)
+| Badge | What it tells you |
+| --- | --- |
+| **Face Matches ID** | Whether the applicant's selfie matches the photo on their ID document |
+| **Face Liveness** | Whether the applicant passed the liveness check (includes confidence score) |
+| **ID Verification** | Whether the submitted ID was validated and the selfie matches |
+| **Age Estimation** | The estimated age range based on facial analysis |
+| **PEP Sanctions Check** | Whether the applicant was found on any sanctions or PEP lists |
+| **Bank Statement Import** | Whether bank data was successfully retrieved (includes institution and date range) |
+| **ID Scanned Details** | Whether the ID was successfully scanned and key fields extracted |
+| **Name Matches ID** | Whether the name on the ID matches the name provided by the applicant |
+| **ID Type Matches Selection** | Whether the uploaded document matches the type the applicant selected |
+| **ID Expiry Date** | Whether the ID document is still valid and hasn't expired |
+| **Valid State/Province** | Whether the ID is from an allowed state or province |
+| **Age Restriction** | Whether the applicant meets the minimum age requirement based on their ID |
 
 <Tip>
-  Voiding a session removes it from aggregate reporting and analytics, but the record is retained for audit purposes.
+  Badges with a red X are the fastest way to identify what needs your attention. Start there and work outward.
 </Tip>
 
-## Filtering and search
+---
 
-Use the Admin Console's filtering tools to narrow down sessions by:
+## How to Conduct a Thorough Manual Review
 
-- Status (Pending, Submitted, Verified, Rejected, Voided)
-- Date range
-- Applicant name or email
-- External ID
-- Workflow
+<Steps>
+  <Step title="Start with the badges">
+    Open the session detail view and scan the verification badges at the top. Any red X badges are your starting point — they highlight exactly which checks raised concerns.
+  </Step>
+
+  <Step title="Inspect the ID and documents">
+    deepidv already runs automated validation on every document — extracting text, checking expiry dates, and scanning for tampering. Your job is to evaluate the flagged items:
+
+    1. **Check the ID Details tab** — review extracted fields like name, date of birth, document number, and expiry. Confidence scores are shown next to each field.
+    2. **Compare the detected ID type** against what the applicant selected — a mismatch could indicate confusion or an intentional swap.
+    3. **Look for tampering signals** — if the document fraud analysis flagged anything, inspect the uploaded images closely for signs of editing, cropping, or physical manipulation.
+    4. **Verify the expiry date** — expired documents should generally be rejected unless your policy allows them.
+  </Step>
+
+  <Step title="Review biometric results">
+    Check the face matching and liveness outcomes:
+
+    1. **Face match confidence** — deepidv compares the selfie to the ID photo and returns a similarity score. Low scores may indicate a mismatch, but poor lighting or camera quality can also be a factor.
+    2. **Liveness score** — a high score means the applicant was confirmed as a live person. Low scores may flag printed photos, replayed videos, or deepfake attempts.
+    3. **Age estimation** — if the estimated age range conflicts with the date of birth on the ID, investigate further.
+  </Step>
+
+  <Step title="Check compliance and screening results">
+    Review the risk-related tabs:
+
+    **PEP & Sanctions**
+    - **No matches** — low risk, no hits on global watchlists.
+    - **Matches found** — review each match carefully. Check the match score, country, datasets, and whether it's a true positive or a false positive based on name similarity and date of birth.
+
+    **Adverse Media**
+    - Review any flagged media mentions, legal proceedings, or negative press tied to the applicant.
+
+    **Title Search / Credit Check**
+    - If these services were part of the workflow, review the results in their respective tabs for any red flags.
+  </Step>
+
+  <Step title="Review the audit trail">
+    The **Audit Trail** tab shows a chronological log of every event in the session — when it was created, when the applicant started, when each check completed, and any reviewer actions taken. Use this to understand the full timeline.
+  </Step>
+</Steps>
+
+---
+
+## Making a Decision
+
+After your review, you have three options:
+
+<CardGroup cols={3}>
+  <Card title="Verify" icon="circle-check">
+    - Document appears authentic
+    - Selfie matches the ID photo
+    - Liveness score is acceptable
+    - No relevant PEP/sanctions hits
+    - All badges are green or explainable
+  </Card>
+
+  <Card title="Reject" icon="circle-xmark">
+    - Document looks tampered or forged
+    - Selfie doesn't match the ID
+    - Confirmed sanctions or PEP match
+    - Strong indicators of fraud
+    - Failed age or expiry restrictions
+  </Card>
+
+  <Card title="Void" icon="ban">
+    - Test or duplicate session
+    - Created in error
+    - Applicant requested cancellation
+    - Session should be excluded from reporting
+  </Card>
+</CardGroup>
+
+<Info>
+  When rejecting a session, always add **review notes** explaining your reasoning. This supports internal quality assurance, compliance audits, and team training.
+</Info>
+
+---
+
+## Filtering and Search
+
+Use the Admin Console's filtering tools to narrow down sessions:
+
+| Filter | Options |
+| --- | --- |
+| **Status** | Pending, Submitted, Verified, Rejected, Voided |
+| **Date range** | Filter by creation or submission date |
+| **Applicant** | Search by name or email |
+| **External ID** | Filter by your internal reference ID |
+| **Workflow** | Show sessions from a specific workflow |
+
+<Tip>
+  Filter by **Submitted** status to see all sessions waiting for manual review. This is the queue you should be checking regularly.
+</Tip>
+
+---
+
+## Review Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with the badges">
+    The verification badge grid gives you an instant snapshot. Red X badges tell you exactly where the session has issues — start your review there instead of reading everything top to bottom.
+  </Accordion>
+
+  <Accordion title="Be consistent across reviewers">
+    Apply the same criteria to every session. Document your reasoning in the review notes so other team members can follow the same logic and maintain consistency.
+  </Accordion>
+
+  <Accordion title="Cross-reference multiple signals">
+    Don't make decisions based on a single data point. A borderline liveness score combined with a name mismatch and a PEP hit paints a very different picture than any one of those alone.
+  </Accordion>
+
+  <Accordion title="Use the zoom on documents">
+    When inspecting uploaded IDs, zoom in on the images to check for subtle signs of editing, missing security features, or inconsistent fonts and spacing.
+  </Accordion>
+
+  <Accordion title="Document every rejection">
+    Add clear, specific notes when rejecting a session. This builds an audit trail for compliance, helps with disputes, and gives your team a reference for similar cases in the future.
+  </Accordion>
+
+  <Accordion title="Check the session regularly">
+    Set a cadence for reviewing submitted sessions. The faster you review, the better the applicant experience — and the less likely they are to drop off while waiting.
+  </Accordion>
+</AccordionGroup>

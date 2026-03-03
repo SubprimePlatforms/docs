@@ -3,36 +3,187 @@ title: Services
 description: Identity verification and financial data services offered by deepidv
 ---
 
-deepidv provides modular services that you can combine into [workflows](/workflows/workflows) to match your verification needs. Select only the modules you need — each is priced independently per use.
+> A full breakdown of every module available on the deepidv platform — mix and match to build the verification flow your product needs.
 
-## Identity Verification
+export const SectionHeader = ({
+  label,
+  title,
+  description,
+  align = "left",
+}) => (
+  <div
+    className="deepidv-section-header"
+    style={{
+      textAlign: align,
+      alignItems: align === "center" ? "center" : "flex-start",
+    }}
+  >
+    {label && <p className="deepidv-section-label">{label}</p>}
+    <h2 className="deepidv-section-title">{title}</h2>
+    {description && <p className="deepidv-section-desc">{description}</p>}
+  </div>
+);
 
-<CardGroup cols={2}>
-  <Card title="ID Verification" icon="id-card">
-    Verify government-issued identity documents with automated data extraction and authenticity checks.
-  </Card>
-  <Card title="Face Liveness" icon="face-viewfinder">
-    Confirm the end user is physically present with real-time liveness detection.
-  </Card>
-  <Card title="Age Estimation" icon="calendar-check">
-    Estimate the end user's age using facial analysis to enforce age-gated requirements.
-  </Card>
-  <Card title="PEP & Sanctions Screening" icon="shield-halved">
-    Screen individuals against global Politically Exposed Persons and sanctions watchlists.
-  </Card>
-</CardGroup>
+export const FeatureGrid = ({ cols = 3, children }) => (
+  <div
+    className="deepidv-feature-grid"
+    style={{
+      "--grid-cols": cols,
+    }}
+  >
+    {children}
+  </div>
+);
 
-## Financial Data
+export const FeatureCard = ({ icon, title, description, badge }) => (
+  <div className="deepidv-feature-card">
+    {icon && (
+      <div className="deepidv-feature-card-icon">
+        <Icon icon={icon} size={20} />
+      </div>
+    )}
+    <div className="deepidv-feature-card-content">
+      <h3 className="deepidv-feature-card-title">
+        {title}
+        {badge && <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#1E7FE0", marginLeft: "0.5rem", background: "#EBF4FE", padding: "2px 8px", borderRadius: "9999px" }}>{badge}</span>}
+      </h3>
+      {description && (
+        <p className="deepidv-feature-card-desc">{description}</p>
+      )}
+    </div>
+  </div>
+);
 
-<CardGroup cols={2}>
-  <Card title="Bank Statement Sync" icon="building-columns">
-    Retrieve bank statements directly from the end user's financial institution.
-  </Card>
-  <Card title="AI Bank Statement Analysis" icon="chart-mixed">
-    Analyze bank statements with AI to generate income, spending, and affordability insights.
-  </Card>
-</CardGroup>
+Every service below can be toggled on or off inside a [workflow](/workflows/workflows). Pick what you need, skip what you don't — you're only charged for what runs. See [Pricing](/pricing) for per-service rates.
 
-<Info>
-  More services are coming soon. See [Pricing](/pricing) for per-service token costs.
-</Info>
+<SectionHeader
+  label="Document & Identity"
+  title={
+    <>
+      Know <span>who you're dealing with</span>
+    </>
+  }
+  description="Scan IDs, detect document fraud, and pull property records — all automated."
+/>
+
+<FeatureGrid cols={3}>
+  <FeatureCard icon="id-card" title="ID Verification" description="Reads and validates government-issued IDs — extracts names, dates, and document numbers while checking for expiry and authenticity." />
+
+  <FeatureCard icon="file-shield" title="Document Upload with Fraud Detection" description="Applicants upload supporting documents, which are automatically analyzed by AI for tampering, edits, or forgery." />
+
+  <FeatureCard icon="magnifying-glass" title="Title Search" description="Looks up property title records to surface ownership history, liens, and encumbrances from land registry databases." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Biometric & Liveness"
+  title={
+    <>
+      Make sure <span>they're actually there</span>
+    </>
+  }
+  description="Stop spoofed selfies and deepfakes — confirm a living person is on the other side of the screen."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="video" title="Face Liveness" description="Runs active liveness checks in real time — catches printed photos, replayed videos, and AI-generated faces before they get through." />
+
+  <FeatureCard icon="cake-candles" title="Age Estimation" description="Predicts the applicant's age from a selfie using facial analysis. Useful for age-gated products, content, or regulatory requirements." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Risk & Compliance"
+  title={
+    <>
+      Catch <span>red flags</span> early
+    </>
+  }
+  description="Run applicants through sanctions lists and media databases before they become a compliance problem."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="shield-check" title="PEP & Sanctions Screening" description="Checks applicants against politically exposed persons lists, international sanctions databases, and global watchlists in real time." />
+
+  <FeatureCard icon="newspaper" title="Adverse Media" description="Scans for negative press, legal issues, and public media mentions tied to the applicant's name and identity." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Contact Verification"
+  title={
+    <>
+      Reach them <span>for real</span>
+    </>
+  }
+  description="Go beyond form fields — verify phone numbers and addresses through live, interactive challenges."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="phone" title="Phone Verification" description="Places a live call to the applicant and asks them to repeat a voice prompt — proving they own the number and are available." />
+
+  <FeatureCard icon="location-dot" title="Address Verification" description="An AI-powered conversation asks the applicant location-specific questions to confirm where they live — no utility bill needed." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Financial Data"
+  title={
+    <>
+      See the <span>full financial picture</span>
+    </>
+  }
+  description="Pull bank data and let AI do the heavy lifting on income, spending, and affordability."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="building-columns" title="Bank Statement Sync" description="Connects to the applicant's bank through open banking and pulls transaction history and statements automatically." />
+
+  <FeatureCard icon="chart-mixed" title="AI Bank Statement Analysis" description="Feeds bank data through AI to break down income sources, recurring expenses, and overall affordability at a glance." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Customization"
+  title={
+    <>
+      Make it <span>yours</span>
+    </>
+  }
+  description="Collect exactly what you need — custom photos, form fields, or file uploads — right inside the verification flow."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="camera" title="Custom Prompt Picture" description="Define a prompt and the applicant snaps a photo to match — property exterior, vehicle plate, workspace, whatever you need." />
+
+  <FeatureCard icon="clipboard-list" title="Custom Forms" description="Drop in your own questions, input fields, and file upload slots. Configure them per workflow to capture exactly the data you're after." />
+</FeatureGrid>
+
+<SectionHeader
+  label="Platform Tools"
+  title={
+    <>
+      Tools baked <span>into the console</span>
+    </>
+  }
+  description="Handle document exchange and e-signatures without leaving the Admin Console."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="paper-plane" title="Document Transfers" description="Push documents to applicants or receive them back — managed entirely from the console without any external tooling." />
+
+  <FeatureCard icon="signature" title="E-Signatures" description="Get binding electronic signatures from applicants during onboarding, closing, or any step that needs a sign-off." />
+</FeatureGrid>
+
+---
+
+<SectionHeader
+  label="Enterprise"
+  title={
+    <>
+      Going <span>deeper</span>?
+    </>
+  }
+  description="Enterprise-grade services available through our sales team. Reach out to get set up."
+/>
+
+<FeatureGrid cols={2}>
+  <FeatureCard icon="credit-card" title="Credit Check" badge="Contact Sales" description="Pull credit reports from major bureaus to evaluate an applicant's borrowing history, score, and overall financial standing." />
+
+  <FeatureCard icon="user-magnifying-glass" title="Background Checks" badge="Contact Sales" description="Full background screening — criminal records, past employment, education history, and more — delivered programmatically." />
+</FeatureGrid>

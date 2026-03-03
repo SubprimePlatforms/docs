@@ -3,48 +3,198 @@ title: Pricing
 description: deepidv token-based pricing
 ---
 
-deepidv uses a simple, transparent token-based pricing model. Each service has a fixed cost per use — you only pay for what you consume.
+> Prepaid tokens, no contracts, no minimums. You're only billed when a check actually completes.
 
-## How pricing works
+deepidv runs on a **pay-per-use model** — buy tokens in USD, and each completed check deducts the corresponding amount from your balance. Tokens never expire, and there are no monthly commitments.
 
-deepidv offers two plans:
+### How it works
 
-<CardGroup cols={2}>
-  <Card title="Pay-Per-Use" icon="coins">
-    The default plan. Purchase tokens upfront and they're deducted each time a service is used. Top up your balance at any time from the Admin Console.
-  </Card>
-  <Card title="Subscription" icon="calendar">
-    Subscribe to a monthly plan that includes a set number of sessions. Once your included sessions are used, additional usage is charged at pay-per-use rates.
-  </Card>
-</CardGroup>
+1. **Top up your balance** — purchase tokens through the [Admin Console](https://app.deepidv.com) under **Settings → Billing**
+2. **Build a workflow** — combine the services you need in the [Workflows](/workflows/workflows) section
+3. **Pay per check** — the total cost of a session is the sum of each enabled service
 
-## Service pricing
+---
 
-Each service is priced independently. When you use a [workflow](/workflows/workflows) that combines multiple services, the total cost is the sum of each included service.
+## Workflow Session Pricing
 
-| Service | Cost per use |
-|---------|-------------|
-| ID Verification | $0.50 |
-| PEP & Sanctions Screening | $0.25 |
-| Age Estimation | $0.05 |
-| Face Liveness | $0.05 |
-| Bank Statement Sync | $1.10 |
-| AI Bank Statement Analysis | $0.95 |
+Each service below can be toggled into a workflow. The session price is the total of every enabled service that runs.
 
-<Tip>
-  Combine services into workflows to run multiple checks in a single session. The total cost is simply the sum of each service used.
-</Tip>
+<table>
+  <thead>
+    <tr>
+      <th style={{ width: "35%" }}>Service</th>
+      <th style={{ width: "45%" }}>What it does</th>
+      <th style={{ width: "20%", textAlign: "center" }}>Price per use</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr>
+      <td><code>ID Verification</code></td>
+      <td>Scans and validates government-issued identity documents</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.50</td>
+    </tr>
+
+    <tr>
+      <td><code>Face Liveness</code></td>
+      <td>Confirms the applicant is a live person, not a photo or deepfake</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.05</td>
+    </tr>
+
+    <tr>
+      <td><code>Age Estimation</code></td>
+      <td>Predicts the applicant's age from facial analysis</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.05</td>
+    </tr>
+
+    <tr>
+      <td><code>PEP & Sanctions</code></td>
+      <td>Checks against global politically exposed persons and sanctions lists</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.40</td>
+    </tr>
+
+    <tr>
+      <td><code>Adverse Media</code></td>
+      <td>Scans for negative press, legal issues, and public media mentions</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.40</td>
+    </tr>
+
+    <tr>
+      <td><code>Phone Verification</code></td>
+      <td>Places a live call and verifies identity through a spoken voice prompt</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.40</td>
+    </tr>
+
+    <tr>
+      <td><code>Address Verification</code></td>
+      <td>AI-powered conversation to confirm the applicant's location</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.50</td>
+    </tr>
+
+    <tr>
+      <td><code>Bank Statement Sync</code></td>
+      <td>Pulls bank statements directly from the applicant's financial institution</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$1.10</td>
+    </tr>
+
+    <tr>
+      <td><code>AI Bank Statement Analysis</code></td>
+      <td>AI-driven breakdown of income, spending, and affordability</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.95</td>
+    </tr>
+
+    <tr>
+      <td><code>Title Search</code></td>
+      <td>Looks up property title records for ownership and lien data</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.80</td>
+    </tr>
+
+    <tr>
+      <td><code>Document Fraud Analysis</code></td>
+      <td>AI analysis of uploaded documents for tampering or forgery</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.40</td>
+    </tr>
+
+    <tr>
+      <td><code>Document Upload</code></td>
+      <td>Collects supporting documents from the applicant</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.05</td>
+    </tr>
+
+    <tr>
+      <td><code>Custom Prompt Picture</code></td>
+      <td>Requests a specific photo based on a prompt you define</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.05</td>
+    </tr>
+
+    <tr>
+      <td><code>Custom Form</code></td>
+      <td>Custom questions, fields, and file uploads in the verification flow</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.05</td>
+    </tr>
+
+    <tr>
+      <td><code>E-Signature</code></td>
+      <td>Collects a legally binding electronic signature from the applicant</td>
+      <td style={{ textAlign: "center", fontWeight: 600 }}>\$0.10</td>
+    </tr>
+
+    <tr>
+      <td><code>Credit Check</code></td>
+      <td>Pulls credit reports from major bureaus</td>
+      <td style={{ textAlign: "center" }}>
+        <a href="mailto:sales@deepidv.com">Contact Sales</a>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ### Example
 
-A workflow that includes **ID Verification**, **Face Liveness**, and **PEP & Sanctions Screening** costs:
+A workflow with **ID Verification**, **Face Liveness**, and **PEP & Sanctions** costs:
 
 ```
-$0.50 + $0.05 + $0.25 = $0.80 per session
+$0.50 + $0.05 + $0.40 = $0.95 per session
 ```
 
-## Managing your balance
+---
 
-- View your current token balance in the [Admin Console](https://app.deepidv.com)
-- Top up tokens at any time under **Settings** → **Billing**
-- If your balance reaches zero, API requests that create sessions will return a `402 Payment Required` error
+## Standalone API Pricing *(Coming Soon)*
+
+Direct server-to-server API calls — no session or workflow required. Pricing for standalone endpoints will be published when this integration path is available.
+
+---
+
+## Managing Your Balance
+
+- Check your current token balance in the [Admin Console](https://app.deepidv.com)
+- Top up anytime under **Settings → Billing**
+- If your balance hits zero, session creation requests return a `402 Payment Required` error
+
+---
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Do tokens expire?">
+    No. Once you purchase tokens, they stay in your account indefinitely. Use them whenever you need — there's no time pressure or monthly reset.
+  </Accordion>
+
+  <Accordion title="When am I charged?">
+    You're billed when a session is created and the enabled services are triggered. Each service in the workflow is charged at its listed rate.
+  </Accordion>
+
+  <Accordion title="Are there contracts or minimum spend requirements?">
+    None. deepidv is fully pay-as-you-go. No annual contracts, no monthly minimums, no lock-ins. You control exactly how much you spend and when.
+  </Accordion>
+
+  <Accordion title="How does workflow pricing work?">
+    Each workflow is made up of individual services. When a session runs, you're charged the sum of each enabled service that completes. Only toggle what you need — you're never paying for services you didn't use.
+  </Accordion>
+
+  <Accordion title="Can I get volume discounts?">
+    Yes. For high-volume use cases or enterprise needs, reach out to [sales@deepidv.com](mailto:sales@deepidv.com) to discuss custom pricing and volume rates.
+  </Accordion>
+
+  <Accordion title="Are there setup fees or hidden costs?">
+    No. There are no setup fees, no integration charges, and no hidden line items. The prices listed above are exactly what you pay per completed check.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Prices listed above are subject to change. For custom pricing, volume discounts, or enterprise plans, contact [sales@deepidv.com](mailto:sales@deepidv.com).
+</Warning>
+
+---
+
+### Get Started
+
+<CardGroup cols={2}>
+  <Card title="Create Your Account" icon="rocket" href="https://app.deepidv.com">
+    Sign up and start verifying — top up tokens when you're ready.
+  </Card>
+
+  <Card title="Talk to Sales" icon="envelope" href="mailto:sales@deepidv.com">
+    Need custom pricing or volume rates? Let's chat.
+  </Card>
+</CardGroup>

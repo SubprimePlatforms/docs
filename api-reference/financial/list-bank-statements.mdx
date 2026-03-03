@@ -1,0 +1,133 @@
+---
+title: List Bank Statements
+description: List all bank statement requests for your organization
+api: GET /v1/financial
+---
+
+```
+GET /v1/financial
+```
+
+Returns a paginated list of bank statement requests for your organization, sorted by creation date (newest first). Credit terms records are excluded from this list.
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `x-api-key` | Yes | Your API key |
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `nextToken` | string | No | Pagination token from a previous response |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.deepidv.com/v1/financial" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/financial",
+  {
+    headers: { "x-api-key": "YOUR_API_KEY" },
+  }
+);
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/financial",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bankStatements` | array | Array of bank statement summary objects |
+| `nextToken` | string \| null | Pagination token to fetch the next page. `null` when no more results |
+
+### Bank statement summary object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique bank statement identifier |
+| `organizationId` | string | Organization that owns this request |
+| `userId` | string | User ID of the applicant |
+| `senderUserId` | string | User ID of the person who created the request |
+| `status` | string | `PENDING`, `IN_PROGRESS`, `FLINKS_IN_PROGRESS`, or `COMPLETED` |
+| `type` | string | `request` or `upload` |
+| `Config` | object | Request configuration (e.g. `{ "period": "6" }`) |
+| `createdAt` | string | ISO 8601 creation timestamp |
+| `updatedAt` | string | ISO 8601 last-updated timestamp |
+
+### Pagination
+
+To fetch the next page, pass the `nextToken` from the response as a query parameter:
+
+```bash
+curl -X GET "https://api.deepidv.com/v1/financial?nextToken=eyJpZCI6ImFiYzEyMyJ9" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Continue paginating until `nextToken` is `null`.
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| `400 Bad Request` | Invalid query parameters |
+| `401 Unauthorized` | Missing or invalid API key |
+| `404 Not Found` | No bank statements found for your organization |
+| `429 Too Many Requests` | Rate limit exceeded |
+
+<ResponseExample>
+```json 200
+{
+  "bankStatements": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "organizationId": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
+      "userId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "senderUserId": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "status": "COMPLETED",
+      "type": "request",
+      "Config": {
+        "period": "6"
+      },
+      "createdAt": "2026-02-15T14:30:00.000Z",
+      "updatedAt": "2026-02-15T15:00:00.000Z"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "organizationId": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
+      "userId": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "senderUserId": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "status": "PENDING",
+      "type": "request",
+      "Config": {
+        "period": "3"
+      },
+      "createdAt": "2026-02-14T10:00:00.000Z",
+      "updatedAt": "2026-02-14T10:00:00.000Z"
+    }
+  ],
+  "nextToken": null
+}
+```
+</ResponseExample>

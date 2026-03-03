@@ -3,63 +3,102 @@ title: API Authentication
 description: Learn how to authenticate with the deepidv API
 ---
 
-All API requests must be authenticated using an API key passed in the request header.
+> deepidv uses API keys to authenticate every request. Pass your secret key via HTTP header — missing or invalid keys return a 401 error.
+
+## Finding Your API Key
+
+In deepidv, API keys are scoped to your **Organization**. Your organization is the workspace where your team manages workflows, verification sessions, and billing.
+
+An API key is generated when you first create your organization. To find or regenerate your key:
+
+<Steps>
+  <Step title="Log in to the Admin Console">
+    Go to the [**deepidv Admin Console**](https://app.deepidv.com) and sign in.
+  </Step>
+
+  <Step title="Open API Keys">
+    Navigate to [**Settings → API Keys**](https://app.deepidv.com/dashboard/api/api-keys) in the sidebar.
+  </Step>
+
+  <Step title="Copy your key">
+    Your **API Key** will be displayed here. Click to copy it.
+  </Step>
+</Steps>
+
+<Warning>
+  **Your API key is a secret — treat it like a password.**
+
+  It grants full access to the API on behalf of your organization. Never expose it in frontend code, public repositories, or client-side bundles. Always keep it server-side only.
+</Warning>
+
+---
 
 ## Base URL
+
+All API requests are made against a single base URL:
 
 ```
 https://api.deepidv.com
 ```
 
-All endpoints are prefixed with `/v1`.
+Every endpoint is prefixed with `/v1` — for example, `https://api.deepidv.com/v1/sessions`.
 
-## Authentication header
+---
 
-Include your API key in the `x-api-key` header with every request:
+## Making Authenticated Requests
 
-```bash
-curl -X GET https://api.deepidv.com/v1/sessions \
-  -H "x-api-key: YOUR_API_KEY"
+Include your secret API key in the `x-api-key` HTTP header with every request.
+
+Here's an example of an authenticated request to the `Create Session` endpoint:
+
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/sessions \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "phone": "+14165557890",
+    "workflowId": "your-workflow-id"
+  }'
 ```
 
-deepidv validates your API key using HMAC SHA256 to authenticate requests and identify your organization.
+deepidv validates your API key using HMAC SHA256 to authenticate the request and identify your organization.
 
-## Getting your API key
+---
 
-1. Log in to the [Admin Console](https://app.deepidv.com)
-2. Navigate to **Settings** → **API Keys**
-3. Click **Generate API Key**
-4. Copy and store your key securely
+## Rate Limits
 
-<Warning>
-  Your API key is shown only once at creation. Store it in a secure location such as an environment variable or secrets manager. If you lose your key, you'll need to generate a new one.
-</Warning>
-
-## Security best practices
-
-- **Never expose your API key in client-side code** — make API calls from your backend server only.
-- **Do not commit API keys to version control** — use environment variables or a secrets manager.
-- **Rotate keys regularly** — revoke old keys and generate new ones through the Admin Console.
-- **Use HTTPS only** — all API requests must be made over HTTPS.
-
-## Rate limits
-
-The API enforces rate limits to ensure fair usage and platform stability.
+The API enforces rate limits to ensure fair usage and platform stability:
 
 | Limit | Value |
-|-------|-------|
+| --- | --- |
 | Requests per second | 25 |
 | Burst capacity | 35 |
 | Daily request quota | 10,000 |
 
 If you exceed these limits, the API returns a `429 Too Many Requests` response. Implement exponential backoff in your integration to handle rate limiting gracefully.
 
-## Error responses
+---
 
-If authentication fails, the API returns one of the following:
+## Error Handling
 
-| Status | Description |
-|--------|-------------|
-| `401 Unauthorized` | Missing or invalid API key |
-| `402 Payment Required` | Insufficient token balance in your organization |
-| `429 Too Many Requests` | Rate limit exceeded |
+If your API key is missing or invalid, the API returns a `401 Unauthorized` response:
+
+```json
+{
+  "detail": "Invalid or missing API key"
+}
+```
+
+| Status Code | Meaning |
+| --- | --- |
+| **401** | API key is missing, invalid, or revoked |
+| **402** | Insufficient token balance in your organization |
+| **403** | API key does not have access to the requested resource |
+| **429** | Rate limit exceeded — back off and retry |
+
+<Tip>
+  If you receive a `401` error, double-check that you're using the correct API key for your organization and that it hasn't been regenerated since you last copied it.
+</Tip>

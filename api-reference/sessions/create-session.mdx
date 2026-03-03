@@ -21,16 +21,18 @@ Creates a new identity verification session and optionally sends email and SMS i
 
 ### Body parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `firstName` | string | Yes | Applicant's first name |
-| `lastName` | string | Yes | Applicant's last name |
-| `email` | string | Yes | Applicant's email address |
-| `phone` | string | Yes | Applicant's phone number in E.164 format (e.g. `+15192223333`) |
-| `externalId` | string | No | Your internal reference ID for this session |
-| `sendEmailInvite` | boolean | No | Send an email invitation to the applicant. Defaults to `true` |
-| `sendPhoneInvite` | boolean | No | Send an SMS invitation to the applicant. Defaults to `true` |
-| `workflowId` | string | No | ID of the workflow to use. If omitted, runs as a standalone verification |
+Both camelCase and snake_case parameter names are accepted. If both are provided for the same field, the camelCase value takes priority.
+
+| Parameter | Alias | Type | Required | Description |
+|-----------|-------|------|----------|-------------|
+| `first_name` | `firstName` | string | Yes | Applicant's first name |
+| `last_name` | `lastName` | string | Yes | Applicant's last name |
+| `email` | — | string | Yes | Applicant's email address |
+| `phone` | — | string | Yes | Applicant's phone number in E.164 format (e.g. `+15192223333`) |
+| `external_id` | `externalId` | string | No | Your internal reference ID for this session |
+| `send_email_invite` | `sendEmailInvite` | boolean | No | Send an email invitation to the applicant. Defaults to `true` |
+| `send_phone_invite` | `sendPhoneInvite` | boolean | No | Send an SMS invitation to the applicant. Defaults to `true` |
+| `workflow_id` | `workflowId` | string | No | ID of the workflow to use. If omitted, runs as a standalone verification |
 
 ### Example request
 
@@ -40,12 +42,12 @@ curl -X POST https://api.deepidv.com/v1/sessions \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "firstName": "John",
-    "lastName": "Doe",
+    "first_name": "John",
+    "last_name": "Doe",
     "email": "john.doe@example.com",
     "phone": "+15192223333",
-    "externalId": "user-12345",
-    "workflowId": "wf_abc123"
+    "external_id": "user-12345",
+    "workflow_id": "wf_abc123"
   }'
 ```
 
@@ -57,12 +59,12 @@ const response = await fetch("https://api.deepidv.com/v1/sessions", {
     "x-api-key": "YOUR_API_KEY",
   },
   body: JSON.stringify({
-    firstName: "John",
-    lastName: "Doe",
+    first_name: "John",
+    last_name: "Doe",
     email: "john.doe@example.com",
     phone: "+15192223333",
-    externalId: "user-12345",
-    workflowId: "wf_abc123",
+    external_id: "user-12345",
+    workflow_id: "wf_abc123",
   }),
 });
 
@@ -79,12 +81,12 @@ response = requests.post(
         "x-api-key": "YOUR_API_KEY",
     },
     json={
-        "firstName": "John",
-        "lastName": "Doe",
+        "first_name": "John",
+        "last_name": "Doe",
         "email": "john.doe@example.com",
         "phone": "+15192223333",
-        "externalId": "user-12345",
-        "workflowId": "wf_abc123",
+        "external_id": "user-12345",
+        "workflow_id": "wf_abc123",
     },
 )
 ```
@@ -93,15 +95,6 @@ response = requests.post(
 ## Response
 
 ### 200 — Success
-
-```json
-{
-  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "session_url": "https://app.deepidv.com",
-  "externalId": "user-12345",
-  "links": []
-}
-```
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -119,3 +112,14 @@ response = requests.post(
 | `402 Payment Required` | Insufficient token balance |
 | `404 Not Found` | Workflow ID not found |
 | `429 Too Many Requests` | Rate limit exceeded |
+
+<ResponseExample>
+```json 200
+{
+  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "session_url": "https://app.deepidv.com",
+  "externalId": "user-12345",
+  "links": []
+}
+```
+</ResponseExample>
