@@ -1,0 +1,178 @@
+---
+title: Sandbox Mode
+description: Test your deepidv integration without consuming tokens or creating real sessions
+---
+
+> Sandbox mode lets you build and test your integration against the deepidv API using realistic dummy data — no tokens consumed, no real sessions created.
+
+## How It Works
+
+Sandbox mode is controlled by a special **Sandbox API Key**. When you make requests with a sandbox key, the API returns realistic test data instead of hitting real services. This lets you:
+
+- Validate your integration logic end-to-end
+- Test how your app handles different session statuses (verified, rejected, pending, etc.)
+- Inspect the full response shape for every endpoint
+- Develop locally without consuming tokens or affecting production data
+
+<Info>
+  Sandbox keys behave identically to live keys for authentication — the only difference is what the API returns.
+</Info>
+
+---
+
+## Generating a Sandbox Key
+
+Sandbox API keys are not created automatically. You need to generate one from the Admin Console:
+
+<Steps>
+  <Step title="Open API Keys">
+    Navigate to [**Settings → API Keys**](https://app.deepidv.com/dashboard/api/api-keys) in the Admin Console.
+  </Step>
+
+  <Step title="Generate a Sandbox Key">
+    Find the **Sandbox API Key** card and click **Generate**. Your sandbox key will appear — copy it somewhere safe.
+  </Step>
+
+  <Step title="Use it like a regular key">
+    Pass the sandbox key in the `x-api-key` header, exactly like a live key. The API handles the rest.
+  </Step>
+</Steps>
+
+<Warning>
+  Sandbox keys follow the same security rules as live keys — keep them server-side and never expose them in frontend code.
+</Warning>
+
+---
+
+## What You Can Do
+
+### GET requests — realistic test data
+
+All `GET` endpoints under `/v1/sessions`, `/v1/financial`, and `/v1/workflows` return realistic dummy data. You control which scenario you get by using **well-known test IDs**.
+
+### POST, PATCH, PUT, DELETE — blocked
+
+Write operations are not available in sandbox mode. Any non-GET request to a sandboxed route returns:
+
+```json
+{
+  "error": "This is a sandbox API key. Use a live API key to create or modify resources."
+}
+```
+
+This is intentional — sandbox mode is for reading and validating response shapes, not creating real records.
+
+### Other routes
+
+Endpoints outside of sessions, financial, and workflows (e.g., `/health`) pass through normally.
+
+---
+
+## Well-Known Test IDs
+
+Use these IDs as the `:id` parameter in GET requests to control which scenario you receive.
+
+### Sessions — `GET /v1/sessions/:id`
+
+| Test ID | Status | Progress | Analysis Data |
+|---------|--------|----------|---------------|
+| `test_verified` | `VERIFIED` | `COMPLETED` | Full — includes all analysis fields (ID analysis, face match, PEP/sanctions, adverse media, title search, document risk, custom form, secondary/tertiary ID) |
+| `test_rejected` | `REJECTED` | `COMPLETED` | Basic — ID analysis and face match with failing scores |
+| `test_submitted` | `SUBMITTED` | `COMPLETED` | Basic — ID analysis and face match (awaiting review) |
+| `test_pending` | `PENDING` | `PENDING` | None |
+| `test_voided` | `VOIDED` | `COMPLETED` | None |
+| Any other ID | Random | Matching | Varies |
+
+<Tip>
+  Use `test_verified` to see every possible field in the response — it's the "everything" scenario with all workflow steps, uploads, and analysis data populated.
+</Tip>
+
+### Financial — `GET /v1/financial/:id`
+
+| Test ID | Status | Statement Data |
+|---------|--------|---------------|
+| `test_completed` | `COMPLETED` | Full bank statement with accounts, transactions, holder info |
+| `test_pending` | `PENDING` | No statement data |
+| Any other ID | Random | Varies |
+
+### Workflows — `GET /v1/workflows/:id`
+
+| Test ID | Steps |
+|---------|-------|
+| `test_workflow` | Full workflow with all 11 steps (ID verification, face liveness, age estimation, PEP/sanctions, adverse media, bank statement upload, document upload, title search, custom prompt, custom form, AI bank statement analysis) |
+| Any other ID | Basic workflow with 2 steps (ID verification, face liveness) |
+
+---
+
+## List Endpoints
+
+List endpoints return multiple records without needing a test ID:
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /v1/sessions` | 5 sessions (one per status), lightweight analysis data |
+| `GET /v1/financial` | 2 bank statements (one completed, one pending), no statement body |
+| `GET /v1/workflows` | 2 workflows (summary only — id, name, created_at) |
+
+All list responses return `next_token: null` (no pagination in sandbox).
+
+---
+
+## Example
+
+Here's a quick example testing the full session response:
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.deepidv.com/v1/sessions/test_verified \
+  -H "x-api-key: YOUR_SANDBOX_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/sessions/test_verified",
+  {
+    headers: { "x-api-key": "YOUR_SANDBOX_API_KEY" },
+  }
+);
+
+const data = await response.json();
+console.log(data.session_record.status); // "VERIFIED"
+console.log(data.session_record.analysis_data); // full analysis object
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/sessions/test_verified",
+    headers={"x-api-key": "YOUR_SANDBOX_API_KEY"},
+)
+
+data = response.json()
+print(data["session_record"]["status"])  # "VERIFIED"
+print(data["session_record"]["analysis_data"])  # full analysis object
+```
+</CodeGroup>
+
+---
+
+## Sandbox vs. Live
+
+| | Sandbox Key | Live Key |
+|---|---|---|
+| **GET requests** | Returns test data | Returns real data |
+| **POST/PATCH/PUT/DELETE** | Returns 403 error | Creates/modifies real resources |
+| **Token consumption** | None | Tokens deducted per operation |
+| **Data persistence** | No data is stored | Sessions and records are persisted |
+| **Authentication** | Same `x-api-key` header | Same `x-api-key` header |
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api-reference/sessions/retrieve-session">
+    See the full response schema for each endpoint.
+  </Card>
+
+  <Card title="Sandbox Models" icon="flask" href="/api-reference/sandbox/models">
+    View the complete sandbox test data models and response examples.
+  </Card>
+</CardGroup>

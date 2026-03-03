@@ -20,7 +20,8 @@
               "introduction",
               "quickstart",
               "authentication",
-              "services"
+              "services",
+              "sandbox"
             ]
           },
           {
@@ -99,6 +100,12 @@
             "group": "Server-to-Server (Coming Soon!)",
             "pages": [
               "api-reference/server-to-server/overview"
+            ]
+          },
+          {
+            "group": "Sandbox",
+            "pages": [
+              "api-reference/sandbox/models"
             ]
           }
         ]

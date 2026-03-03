@@ -1,0 +1,329 @@
+---
+title: Sandbox Models
+description: Test data models and response examples for sandbox API keys
+---
+
+> Reference for all sandbox test data returned by the deepidv API when using a sandbox API key. See [Sandbox Mode](/sandbox) for setup instructions.
+
+## How Sandbox Responses Work
+
+When you make a `GET` request with a sandbox API key, the API returns pre-built test data instead of querying real records. The response shape is **identical** to production — the only difference is that the data is synthetic.
+
+Non-GET requests (`POST`, `PATCH`, `PUT`, `DELETE`) return a `403` error:
+
+```json
+{
+  "error": "This is a sandbox API key. Use a live API key to create or modify resources."
+}
+```
+
+---
+
+## Sessions
+
+### Retrieve Session — `GET /v1/sessions/:id`
+
+Use well-known test IDs to control the scenario. Any unrecognized ID returns a random scenario.
+
+#### `test_verified` — Full "everything" response
+
+Returns a `VERIFIED` session with every possible field populated. Use this to validate your integration handles the complete response shape.
+
+**Key fields included:**
+- `type: "session"` (workflow-based)
+- `workflow_id`, `workflow_steps` (all 11 steps)
+- `bank_statement_request_id`
+- `location`, `submitted_at`, `meta_data`
+- Full `uploads` (primary, secondary, and tertiary IDs, selfies, custom prompt)
+- Complete `analysis_data` with all sub-objects
+
+**Analysis data includes:**
+
+| Field | Description |
+|-------|-------------|
+| `id_analysis_data` | Primary ID — detect face data, all extracted text fields (21 fields), expiry/state/age checks |
+| `secondary_id_analysis_data` | Secondary ID — same structure as primary |
+| `tertiary_id_analysis_data` | Tertiary ID — same structure as primary |
+| `compare_faces_data` | Face match confidence with full face result (landmarks, quality, bounding box, pose, similarity) |
+| `id_matches_selfie` | `true` |
+| `faceliveness_score` | `99.49` |
+| `pep_sanctions_data` | One PEP match, no sanctions |
+| `adverse_media_data` | 4 hits across financial_crime and uncategorized categories with sample articles |
+| `title_search_data` | Full property title with sale info, owner info, location info, and address details |
+| `document_risk_data` | One analyzed document with risk signals, AI analysis, and metadata |
+| `custom_form_data` | One question/answer entry |
+| `selected_document_types` | Primary (drivers_license), secondary (passport), tertiary (pr_card) |
+
+<ResponseExample>
+```json test_verified (truncated)
+{
+  "session_record": {
+    "id": "test_verified",
+    "organization_id": "your-org-id",
+    "user_id": "sandbox-user-000000",
+    "sender_user_id": "your-user-id",
+    "external_id": "sandbox-external-001",
+    "status": "VERIFIED",
+    "type": "session",
+    "session_progress": "COMPLETED",
+    "location": "Canada",
+    "workflow_id": "sandbox-workflow-001",
+    "bank_statement_request_id": "sandbox-bank-stmt-001",
+    "workflow_steps": [
+      "ID_VERIFICATION", "FACE_LIVENESS", "AGE_ESTIMATION",
+      "PEP_SANCTIONS", "ADVERSE_MEDIA", "BANK_STATEMENT_UPLOAD",
+      "DOCUMENT_UPLOAD", "TITLE_SEARCH", "CUSTOM_PROMPT",
+      "CUSTOM_FORM", "AI_BANK_STATEMENT_ANALYSIS"
+    ],
+    "meta_data": {
+      "applicant_submission_ip": "192.168.1.1, 10.0.0.1",
+      "applicant_submission_device": "Mac",
+      "applicant_submission_browser": "Chrome"
+    },
+    "uploads": {
+      "id_front": true,
+      "id_back": true,
+      "secondary_id_front": true,
+      "secondary_id_back": true,
+      "tertiary_id_front": true,
+      "tertiary_id_back": true,
+      "selfie_front": true,
+      "selfie_right": true,
+      "selfie_left": true,
+      "hold_up_3_fingers": true
+    },
+    "analysis_data": {
+      "id_analysis_data": {
+        "detect_face_data": [{ "confidence": 99.99, "age_range": { "high": 23, "low": 19 }, "..." : "..." }],
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "JANE", "confidence": 97.6 },
+          { "type": "LAST_NAME", "value": "DOE", "confidence": 97.15 },
+          { "type": "DATE_OF_BIRTH", "value": "1990/05/15", "confidence": 95.75 },
+          { "type": "DOCUMENT_NUMBER", "value": "D1234567890", "confidence": 90.11 },
+          "... 17 more fields"
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": true,
+        "age_restriction_pass": true
+      },
+      "compare_faces_data": {
+        "face_match_confidence": 99.92,
+        "face_match_result": { "similarity": 99.92, "face": { "..." : "..." } }
+      },
+      "id_matches_selfie": true,
+      "faceliveness_score": 99.49,
+      "pep_sanctions_data": {
+        "peps": [{ "name": "Jane Doe-Smith", "country": "Canada", "score": 0.85 }],
+        "sanctions": null,
+        "both": null
+      },
+      "adverse_media_data": {
+        "total_hits": 4,
+        "news_exposures": { "financial_crime": { "hits": 2, "articles": ["..."] }, "..." : "..." }
+      },
+      "secondary_id_analysis_data": { "..." : "same structure as id_analysis_data" },
+      "tertiary_id_analysis_data": { "..." : "same structure as id_analysis_data" },
+      "selected_document_types": { "primary": "drivers_license", "secondary": "passport", "tertiary": "pr_card" },
+      "title_search_data": { "last_market_sale_information": { "..." : "..." }, "owner_information": { "..." : "..." }, "..." : "..." },
+      "document_risk_data": { "documents_analyzed": 1, "overall_risk_score": 25, "..." : "..." },
+      "custom_form_data": [{ "question": "What is your Company Business Number", "answer": "1234567890001", "type": "short-text" }]
+    }
+  },
+  "resource_links": {}
+}
+```
+</ResponseExample>
+
+#### `test_rejected`
+
+Returns a `REJECTED` session with basic analysis data — failing face match and ID checks.
+
+| Field | Value |
+|-------|-------|
+| `status` | `REJECTED` |
+| `face_match_confidence` | `42.3` |
+| `id_matches_selfie` | `false` |
+| `expiry_date_pass` | `false` |
+| `valid_state_pass` | `false` |
+
+#### `test_submitted`
+
+Returns a `SUBMITTED` session with basic analysis data — passing scores, awaiting manual review.
+
+#### `test_pending`
+
+Returns a `PENDING` session with no analysis data and `session_progress: "PENDING"`.
+
+#### `test_voided`
+
+Returns a `VOIDED` session with no analysis data.
+
+### List Sessions — `GET /v1/sessions`
+
+Returns 5 sessions (one per status) with lightweight analysis data. The list uses basic analysis — the full "everything" payload is only returned when fetching `test_verified` by ID.
+
+```json
+{
+  "sessions": [
+    { "status": "VERIFIED", "..." : "..." },
+    { "status": "REJECTED", "..." : "..." },
+    { "status": "PENDING", "..." : "..." },
+    { "status": "SUBMITTED", "..." : "..." },
+    { "status": "VOIDED", "..." : "..." }
+  ],
+  "next_token": null
+}
+```
+
+---
+
+## Financial
+
+### Retrieve Bank Statement — `GET /v1/financial/:id`
+
+#### `test_completed`
+
+Returns a completed bank statement with full statement data including accounts, transactions, and holder info.
+
+<ResponseExample>
+```json test_completed
+{
+  "id": "test_completed",
+  "organizationId": "your-org-id",
+  "status": "COMPLETED",
+  "type": "request",
+  "Config": { "period": "3" },
+  "statement": {
+    "HttpStatusCode": 200,
+    "Accounts": [
+      {
+        "Title": "Personal Chequing",
+        "AccountNumber": "****1234",
+        "Type": "Chequing",
+        "Currency": "CAD",
+        "Balance": {
+          "Available": 5188.32,
+          "Current": 5188.32,
+          "Limit": null
+        },
+        "Holder": {
+          "Name": "Jane Doe",
+          "Address": {
+            "CivicAddress": "123 Sandbox Street",
+            "City": "Toronto",
+            "Province": "ON",
+            "PostalCode": "M5V 2T6",
+            "Country": "CA"
+          },
+          "Email": "jane.doe@sandbox.example.com",
+          "PhoneNumber": "+14165551234"
+        },
+        "Transactions": [
+          { "Description": "Direct Deposit - Employer", "Credit": 3250.00, "Balance": 5420.75 },
+          { "Description": "Grocery Store Purchase", "Debit": 87.43, "Balance": 5333.32 },
+          { "Description": "Utility Bill Payment", "Debit": 145.00, "Balance": 5188.32 }
+        ]
+      }
+    ],
+    "InstitutionName": "Sandbox Bank",
+    "Institution": "SandboxBank"
+  }
+}
+```
+</ResponseExample>
+
+<Note>
+  Sensitive fields (`TransitNumber`, `InstitutionNumber`) are omitted from sandbox responses, matching production behavior.
+</Note>
+
+#### `test_pending`
+
+Returns a pending bank statement with no `statement` field.
+
+### List Bank Statements — `GET /v1/financial`
+
+Returns 2 bank statements (completed and pending) without the `statement` body — matching production list behavior.
+
+```json
+{
+  "bankStatements": [
+    { "id": "...", "status": "COMPLETED", "type": "request" },
+    { "id": "...", "status": "PENDING", "type": "request" }
+  ],
+  "nextToken": null
+}
+```
+
+---
+
+## Workflows
+
+### Retrieve Workflow — `GET /v1/workflows/:id`
+
+#### `test_workflow` — Full workflow
+
+Returns a workflow with all 11 available steps, each with realistic config objects:
+
+| Step | Config |
+|------|--------|
+| `id-verification` | Age restriction (18–55), expiry date check, secondary + tertiary ID required, valid ID types, valid states |
+| `face-liveness` | Confidence threshold 70, FaceMovementChallenge method |
+| `age-estimation` | Minimum age 18 |
+| `pep-sanctions` | Default config |
+| `adverse-media` | Default config |
+| `bank-statement-upload` | Checking account, 12-month period |
+| `document-upload` | "Articles of Incorporation" required |
+| `title-search` | USA, all location info fields enabled |
+| `custom-prompt` | "Hold up 3 fingers" |
+| `custom-form` | "What is your Company Business Number" (short-text) |
+| `ai-bank-statement-analysis` | Default config |
+
+<ResponseExample>
+```json test_workflow (truncated)
+{
+  "workflow": {
+    "id": "test_workflow",
+    "name": "Sandbox Full Workflow",
+    "status": "active",
+    "steps": [
+      {
+        "id": "id-verification",
+        "config": {
+          "id-scan-settings": { "require-secondary-id": true, "require-tertiary-id": true },
+          "valid-id-types-settings": { "valid-id-types": { "driver-license-ca": true, "passport-ca": true, "..." : "..." } },
+          "age-restriction-settings": { "minimum-age": { "lower": 18, "upper": 55 } },
+          "..." : "..."
+        }
+      },
+      { "id": "face-liveness", "config": { "..." : "..." } },
+      { "id": "age-estimation", "config": { "..." : "..." } },
+      { "id": "pep-sanctions", "config": {} },
+      { "id": "adverse-media", "config": {} },
+      { "id": "bank-statement-upload", "config": { "..." : "..." } },
+      { "id": "document-upload", "config": { "..." : "..." } },
+      { "id": "title-search", "config": { "..." : "..." } },
+      { "id": "custom-prompt", "config": { "..." : "..." } },
+      { "id": "custom-form", "config": { "..." : "..." } },
+      { "id": "ai-bank-statement-analysis", "config": {} }
+    ]
+  }
+}
+```
+</ResponseExample>
+
+#### Any other ID — Basic workflow
+
+Returns a workflow with 2 steps: `id-verification` and `face-liveness`.
+
+### List Workflows — `GET /v1/workflows`
+
+Returns 2 workflows (summary only):
+
+```json
+{
+  "workflows": [
+    { "id": "...", "name": "Sandbox Full Workflow", "created_at": "..." },
+    { "id": "...", "name": "Sandbox Basic Workflow", "created_at": "..." }
+  ]
+}
+```
