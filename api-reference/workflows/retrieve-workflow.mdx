@@ -66,7 +66,6 @@ response = requests.get(
 | `workflow.name` | string | Workflow name |
 | `workflow.organization_id` | string | Owning organization ID |
 | `workflow.status` | string | `active` or `inactive` |
-| `workflow.created_by` | string | User ID of the workflow creator |
 | `workflow.created_at` | string | ISO 8601 creation timestamp |
 | `workflow.updated_at` | string | ISO 8601 last-updated timestamp |
 | `workflow.steps` | array | Ordered list of verification steps |
@@ -75,7 +74,7 @@ response = requests.get(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `steps[].id` | string | Step identifier (e.g. `id_verification`, `face_liveness`) |
+| `steps[].id` | string | Step identifier (e.g. `id-verification`, `face-liveness`) |
 | `steps[].config` | object | Step-specific configuration settings |
 
 <Tip>
@@ -96,14 +95,14 @@ response = requests.get(
 {
   "workflow": {
     "id": "6d6da499-9225-40fb-9ffd-a06634b915bd",
-    "created_at": "2026-03-01T17:30:24.573Z",
-    "created_by": "a69b63ca-9084-480f-aaaa-2df661d9c902",
     "name": "Everything",
-    "organization_id": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
     "status": "active",
+    "organization_id": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
+    "created_at": "2026-03-01T17:30:24.573Z",
+    "updated_at": "2026-03-01T17:30:24.573Z",
     "steps": [
       {
-        "id": "id_verification",
+        "id": "id-verification",
         "config": {
           "age_restriction_settings": {
             "minimum_age": { "lower": 18, "upper": 55 }
@@ -131,28 +130,28 @@ response = requests.get(
         }
       },
       {
-        "id": "face_liveness",
+        "id": "face-liveness",
         "config": {
           "face_liveness_confidence_settings": { "confidence_threshold": 70 },
           "face_liveness_settings": { "preferred_liveness_method": "FaceMovementChallenge" }
         }
       },
       {
-        "id": "age_estimation",
+        "id": "age-estimation",
         "config": {
           "age_estimation_settings": { "minimum_age": 18 }
         }
       },
       {
-        "id": "pep_sanctions",
+        "id": "pep-sanctions",
         "config": {}
       },
       {
-        "id": "adverse_media",
+        "id": "adverse-media",
         "config": {}
       },
       {
-        "id": "bank_statement_upload",
+        "id": "bank-statement-upload",
         "config": {
           "bank_statement_settings": {
             "account_type": "checking",
@@ -161,7 +160,7 @@ response = requests.get(
         }
       },
       {
-        "id": "document_upload",
+        "id": "document-upload",
         "config": {
           "document_upload_instructions": {
             "document_upload_list": {
@@ -171,13 +170,13 @@ response = requests.get(
         }
       },
       {
-        "id": "title_search",
+        "id": "title-search",
         "config": {
           "title_search_settings": { "title_search_country": "usa" }
         }
       },
       {
-        "id": "custom_prompt",
+        "id": "custom-prompt",
         "config": {
           "custom_instructions": {
             "custom_prompts_list": [{ "text": "Hold up 3 fingers" }]
@@ -185,7 +184,7 @@ response = requests.get(
         }
       },
       {
-        "id": "custom_form",
+        "id": "custom-form",
         "config": {
           "form_fields": {
             "form_fields_list": {
@@ -199,11 +198,10 @@ response = requests.get(
         }
       },
       {
-        "id": "ai_bank_statement_analysis",
+        "id": "ai-bank-statement-analysis",
         "config": {}
       }
-    ],
-    "updated_at": "2026-03-01T17:30:24.573Z"
+    ]
   }
 }
 ```

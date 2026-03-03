@@ -22,7 +22,7 @@ Retrieves the full details of a single verification session by its session ID, i
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | Yes | The session ID (returned as `idv_id` when the session was created) |
+| `id` | string | Yes | The session ID (returned as `id` when the session was created) |
 
 ### Example request
 
@@ -63,6 +63,8 @@ response = requests.get(
 |-------|------|-------------|
 | `session_record` | object | The full session object |
 | `resource_links` | object | Presigned S3 URLs for uploaded documents and images (valid for a limited time) |
+| `user` | object | The applicant's user profile (omitted if the user record is unavailable) |
+| `sender_user` | object | The user who created/sent the session (omitted if the user record is unavailable) |
 
 ### Session object
 
@@ -162,6 +164,20 @@ Each match item contains:
 | `overall_risk_score` | number | Aggregate risk score |
 | `analysis_timestamp` | string | When the risk analysis was performed |
 | `document_analysis` | array | Per-document analysis with risk signals, AI analysis, and metadata |
+
+### `user` / `sender_user` object
+
+Both `user` (the applicant) and `sender_user` (the session creator) share the same shape:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique user identifier |
+| `email` | string | User's email address |
+| `first_name` | string | User's first name |
+| `last_name` | string | User's last name |
+| `phone` | string | User's phone number |
+| `created_at` | string | ISO 8601 timestamp of user creation |
+| `updated_at` | string | ISO 8601 timestamp of last update |
 
 ### Error responses
 
@@ -564,6 +580,24 @@ Each match item contains:
         }
       ]
     }
+  },
+  "user": {
+    "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "email": "john.doe@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone": "+1234567890",
+    "created_at": "2025-01-10T08:00:00.000Z",
+    "updated_at": "2025-01-15T10:42:00.000Z"
+  },
+  "sender_user": {
+    "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+    "email": "admin@example.com",
+    "first_name": "Admin",
+    "last_name": "User",
+    "phone": "+1987654321",
+    "created_at": "2024-12-01T09:00:00.000Z",
+    "updated_at": "2025-01-15T10:30:00.000Z"
   },
   "resource_links": {
     "id_back": "https://s3.amazonaws.com/...",

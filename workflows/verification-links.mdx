@@ -87,7 +87,7 @@ When you create a session, the link is returned in the response:
 
 ```json
 {
-  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "session_url": "https://app.deepidv.com",
   "links": []
 }
@@ -128,11 +128,11 @@ curl -X POST https://api.deepidv.com/v1/sessions \
   }'
 ```
 
-The API returns the `idv_id` and `session_url`:
+The API returns the `id` and `session_url`:
 
 ```json
 {
-  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "session_url": "https://app.deepidv.com",
   "links": []
 }

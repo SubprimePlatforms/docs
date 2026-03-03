@@ -189,6 +189,10 @@ response = requests.get(
 | `sessions` | array | Array of session objects (see [Retrieve Session](/api-reference/sessions/retrieve-session) for full field reference) |
 | `next_token` | string \| null | Pagination token to fetch the next page. `null` when no more results |
 
+<Info>
+  The `user`, `sender_user`, and `resource_links` fields are only returned when retrieving a single session by ID. List responses include the `session_record` fields only.
+</Info>
+
 ### Pagination
 
 To fetch the next page of results, pass the `next_token` from the response as a query parameter:

@@ -98,7 +98,7 @@ response = requests.post(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `idv_id` | string | Unique identifier for the created session |
+| `id` | string | Unique identifier for the created session |
 | `session_url` | string | Base URL where the applicant completes verification |
 | `externalId` | string | Your external ID (only returned if provided in the request) |
 | `links` | array | Associated verification links |
@@ -116,7 +116,7 @@ response = requests.post(
 <ResponseExample>
 ```json 200
 {
-  "idv_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "session_url": "https://app.deepidv.com",
   "externalId": "user-12345",
   "links": []
