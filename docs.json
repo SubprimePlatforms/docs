@@ -38,6 +38,13 @@
             ]
           },
           {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/event-object"
+            ]
+          },
+          {
             "group": "Review Operations",
             "pages": [
               "review/manual-review",

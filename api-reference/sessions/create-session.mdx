@@ -14,25 +14,26 @@ Creates a new identity verification session and optionally sends email and SMS i
 
 ### Headers
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `x-api-key` | Yes | Your API key |
-| `Content-Type` | Yes | `application/json` |
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
 
 ### Body parameters
 
 Both camelCase and snake_case parameter names are accepted. If both are provided for the same field, the camelCase value takes priority.
 
-| Parameter | Alias | Type | Required | Description |
-|-----------|-------|------|----------|-------------|
-| `first_name` | `firstName` | string | Yes | Applicant's first name |
-| `last_name` | `lastName` | string | Yes | Applicant's last name |
-| `email` | — | string | Yes | Applicant's email address |
-| `phone` | — | string | Yes | Applicant's phone number in E.164 format (e.g. `+15192223333`) |
-| `external_id` | `externalId` | string | No | Your internal reference ID for this session |
-| `send_email_invite` | `sendEmailInvite` | boolean | No | Send an email invitation to the applicant. Defaults to `true` |
-| `send_phone_invite` | `sendPhoneInvite` | boolean | No | Send an SMS invitation to the applicant. Defaults to `true` |
-| `workflow_id` | `workflowId` | string | No | ID of the workflow to use. If omitted, runs as a standalone verification |
+| Parameter           | Alias             | Type    | Required | Description                                                                                          |
+| ------------------- | ----------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `first_name`        | `firstName`       | string  | Yes      | Applicant's first name                                                                               |
+| `last_name`         | `lastName`        | string  | Yes      | Applicant's last name                                                                                |
+| `email`             | —                 | string  | Yes      | Applicant's email address                                                                            |
+| `phone`             | —                 | string  | Yes      | Applicant's phone number in E.164 format (e.g. `+15192223333`)                                       |
+| `external_id`       | `externalId`      | string  | No       | Your internal reference ID for this session                                                          |
+| `send_email_invite` | `sendEmailInvite` | boolean | No       | Send an email invitation to the applicant. Defaults to `true`                                        |
+| `send_phone_invite` | `sendPhoneInvite` | boolean | No       | Send an SMS invitation to the applicant. Defaults to `true`                                          |
+| `workflow_id`       | `workflowId`      | string  | No       | ID of the workflow to use. If omitted, runs as a standalone verification                             |
+| `redirect_url`      | `redirectUrl`     | string  | No       | HTTPS URL to redirect the end-user to after the verification session ends. Must be a valid HTTPS URL |
 
 ### Example request
 
@@ -47,7 +48,8 @@ curl -X POST https://api.deepidv.com/v1/sessions \
     "email": "john.doe@example.com",
     "phone": "+15192223333",
     "external_id": "user-12345",
-    "workflow_id": "wf_abc123"
+    "workflow_id": "wf_abc123",
+    "redirect_url": "https://yourapp.com/verify-callback"
   }'
 ```
 
@@ -65,6 +67,7 @@ const response = await fetch("https://api.deepidv.com/v1/sessions", {
     phone: "+15192223333",
     external_id: "user-12345",
     workflow_id: "wf_abc123",
+    redirect_url: "https://yourapp.com/verify-callback",
   }),
 });
 
@@ -87,31 +90,33 @@ response = requests.post(
         "phone": "+15192223333",
         "external_id": "user-12345",
         "workflow_id": "wf_abc123",
+        "redirect_url": "https://yourapp.com/verify-callback",
     },
 )
 ```
+
 </CodeGroup>
 
 ## Response
 
 ### 200 — Success
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `idv_id` | string | Unique identifier for the created session |
-| `session_url` | string | Base URL where the applicant completes verification |
-| `externalId` | string | Your external ID (only returned if provided in the request) |
-| `links` | array | Associated verification links |
+| Field         | Type   | Description                                                 |
+| ------------- | ------ | ----------------------------------------------------------- |
+| `idv_id`      | string | Unique identifier for the created session                   |
+| `session_url` | string | Base URL where the applicant completes verification         |
+| `externalId`  | string | Your external ID (only returned if provided in the request) |
+| `links`       | array  | Associated verification links                               |
 
 ### Error responses
 
-| Status | Description |
-|--------|-------------|
-| `400 Bad Request` | Invalid request body — check required fields and phone format |
-| `401 Unauthorized` | Missing or invalid API key |
-| `402 Payment Required` | Insufficient token balance |
-| `404 Not Found` | Workflow ID not found |
-| `429 Too Many Requests` | Rate limit exceeded |
+| Status                  | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| `400 Bad Request`       | Invalid request body — check required fields and phone format |
+| `401 Unauthorized`      | Missing or invalid API key                                    |
+| `402 Payment Required`  | Insufficient token balance                                    |
+| `404 Not Found`         | Workflow ID not found                                         |
+| `429 Too Many Requests` | Rate limit exceeded                                           |
 
 <ResponseExample>
 ```json 200
@@ -123,3 +128,60 @@ response = requests.post(
 }
 ```
 </ResponseExample>
+
+---
+
+## Redirect URL
+
+When a `redirect_url` is provided in the request, the returned `session_url` will include it as an encoded query parameter:
+
+```
+https://verify.deepidv.com/session/<session_id>?oid=<org_id>&redirect_url=https%3A%2F%2Fyourapp.com%2Fverify-callback
+```
+
+Upon session completion, failure, or user exit, the verification app will redirect the end-user back to your `redirect_url` with the following query parameters appended:
+
+| Parameter    | Type   | Description                                                           |
+| ------------ | ------ | --------------------------------------------------------------------- |
+| `session_id` | string | The session ID                                                        |
+| `status`     | string | The outcome of the session                                            |
+| `reason`     | string | Additional context for the outcome (omitted when status is `success`) |
+
+### Status values
+
+| Value       | Description                                                   |
+| ----------- | ------------------------------------------------------------- |
+| `success`   | Verification session was completed and submitted successfully |
+| `failed`    | Session encountered an error during the verification process  |
+| `abandoned` | User manually exited the session without completing           |
+
+### Reason values
+
+| Value                 | Description                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `document_unreadable` | The uploaded ID document could not be processed (blurry, glare, wrong doc type, etc.) |
+| `face_mismatch`       | Liveness/selfie did not match the document photo                                      |
+| `session_expired`     | The session timed out before the user completed verification                          |
+| `internal_error`      | An unexpected server-side error occurred                                              |
+| `user_cancelled`      | User explicitly chose to leave/cancel the verification                                |
+| `unknown`             | Catch-all for any unclassified failure                                                |
+
+<Info>
+  The `reason` parameter is omitted when `status=success`. When
+  `status=abandoned`, the reason will typically be `user_cancelled`. New reason
+  values may be added in the future — your integration should handle unknown
+  reasons gracefully.
+</Info>
+
+### Example redirect URLs
+
+```bash
+# Success
+https://yourapp.com/verify-callback?session_id=sess_abc&status=success
+
+# Failure
+https://yourapp.com/verify-callback?session_id=sess_abc&status=failed&reason=document_unreadable
+
+# Abandoned
+https://yourapp.com/verify-callback?session_id=sess_abc&status=abandoned&reason=user_cancelled
+```

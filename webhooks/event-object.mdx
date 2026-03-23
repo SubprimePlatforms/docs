@@ -1,0 +1,220 @@
+---
+title: Event Object
+description: Structure of the webhook event payload sent to your endpoint
+---
+
+When deepidv sends a webhook event to your endpoint, the request body contains an event object with the event type and the associated data.
+
+## Event object structure
+
+Every webhook event follows this structure:
+
+```json
+{
+  "type": "session.status.verified",
+  "data": {
+    // Session object — same structure as the Retrieve Session API response
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | The event type that triggered the webhook (e.g. `session.status.submitted`) |
+| `data` | object | The session object associated with the event. This is the same transformed session object returned by the [Retrieve Session](/api-reference/sessions/retrieve-session) API |
+
+## Event types
+
+| Event | Trigger |
+|-------|---------|
+| `session.created` | A new verification session has been created |
+| `session.status.submitted` | An applicant has completed and submitted their verification session |
+| `session.status.verified` | A verification session has been marked as verified (via manual review or automatic rules) |
+| `session.status.rejected` | A verification session has been marked as rejected (via manual review or automatic rules) |
+
+## Headers
+
+Every webhook request includes the following headers:
+
+| Header | Description |
+|--------|-------------|
+| `Content-Type` | `application/json` |
+| `deepidv-signature` | Your webhook's signing secret for verifying the request origin |
+
+## The `data` object
+
+The `data` field contains the full session object. This is the same structure returned by the [Retrieve Session](/api-reference/sessions/retrieve-session) API endpoint. The key fields are outlined below.
+
+### Session fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique session identifier |
+| `organization_id` | string | Organization that owns this session |
+| `user_id` | string | User ID of the applicant |
+| `sender_user_id` | string | User ID of the person who created the session |
+| `external_id` | string | Your external reference ID (if provided at session creation) |
+| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, or `VOIDED` |
+| `type` | string | `session`, `verification`, `credit-application`, `silent-screening`, or `deep-doc` |
+| `session_progress` | string | `PENDING`, `STARTED`, or `COMPLETED` |
+| `created_at` | string | ISO 8601 timestamp of session creation |
+| `updated_at` | string | ISO 8601 timestamp of last update |
+| `submitted_at` | string | ISO 8601 timestamp when the applicant submitted |
+| `workflow_id` | string | Workflow ID used for this session |
+| `workflow_steps` | string[] | List of workflow step IDs |
+| `uploads` | object | Boolean flags for each uploaded document type |
+| `meta_data` | object | Applicant submission metadata (IP, device, browser) |
+| `analysis_data` | object | Verification analysis results |
+
+### `analysis_data` object
+
+Included when the session has been processed. Contains the full verification analysis:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `created_at` | string | When analysis was performed |
+| `id_analysis_data` | object | Primary ID document analysis (face detection, extracted text, expiry/age/state checks) |
+| `secondary_id_analysis_data` | object | Secondary ID document analysis (same structure) |
+| `tertiary_id_analysis_data` | object | Tertiary ID document analysis (same structure) |
+| `id_matches_selfie` | boolean | Whether the ID photo matches the selfie |
+| `faceliveness_score` | number | Liveness confidence score (0–100) |
+| `compare_faces_data` | object | Face comparison results with `face_match_confidence` score |
+| `pep_sanctions_data` | object | PEP & sanctions screening results |
+| `adverse_media_data` | object | Adverse media screening results |
+| `document_risk_data` | object | Document fraud/risk analysis |
+| `custom_form_data` | array | Custom form question/answer entries |
+
+<Info>
+For a full breakdown of all nested fields within `analysis_data`, see the [Retrieve Session](/api-reference/sessions/retrieve-session) API reference.
+</Info>
+
+## Example payloads
+
+### `session.created`
+
+Sent when a new session is created. At this stage, the session has no analysis data or uploads.
+
+```json
+{
+  "type": "session.created",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "organization_id": "org_123",
+    "user_id": "usr_456",
+    "sender_user_id": "usr_789",
+    "external_id": "your-internal-id",
+    "status": "PENDING",
+    "type": "session",
+    "session_progress": "PENDING",
+    "workflow_id": "wf_abc123",
+    "workflow_steps": ["ID_VERIFICATION", "FACE_LIVENESS"],
+    "created_at": "2026-03-23T14:30:00.000Z",
+    "updated_at": "2026-03-23T14:30:00.000Z"
+  }
+}
+```
+
+### `session.status.submitted`
+
+Sent when an applicant completes and submits their verification session. The `analysis_data` field contains the full verification results.
+
+```json
+{
+  "type": "session.status.submitted",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "organization_id": "org_123",
+    "user_id": "usr_456",
+    "sender_user_id": "usr_789",
+    "external_id": "your-internal-id",
+    "status": "SUBMITTED",
+    "type": "session",
+    "session_progress": "COMPLETED",
+    "workflow_id": "wf_abc123",
+    "workflow_steps": ["ID_VERIFICATION", "FACE_LIVENESS"],
+    "created_at": "2026-03-23T14:30:00.000Z",
+    "updated_at": "2026-03-23T14:35:00.000Z",
+    "submitted_at": "2026-03-23T14:35:00.000Z",
+    "uploads": {
+      "id_front": true,
+      "id_back": true,
+      "selfie_front": true,
+      "selfie_right": true,
+      "selfie_left": true,
+      "faceliveness": false
+    },
+    "meta_data": {
+      "applicantSubmissionIp": "192.168.1.1",
+      "applicantSubmissionDevice": "Mac",
+      "applicantSubmissionBrowser": "Chrome",
+      "applicantViewTime": "2026-03-23T14:30:05.000Z"
+    },
+    "analysis_data": {
+      "created_at": "2026-03-23T14:35:00.000Z",
+      "id_matches_selfie": true,
+      "faceliveness_score": 95.42,
+      "id_analysis_data": {
+        "id_extracted_text": [
+          { "type": "FIRST_NAME", "value": "JOHN", "confidence": 97.69 },
+          { "type": "LAST_NAME", "value": "DOE", "confidence": 85.61 },
+          { "type": "DATE_OF_BIRTH", "value": "1995/05/19", "confidence": 96.33 }
+        ],
+        "expiry_date_pass": true,
+        "valid_state_pass": true,
+        "age_restriction_pass": true
+      },
+      "compare_faces_data": {
+        "face_match_confidence": 95.69
+      },
+      "pep_sanctions_data": {
+        "peps": null,
+        "sanctions": null,
+        "both": null
+      },
+      "adverse_media_data": {
+        "total_hits": 0,
+        "timestamp": "2026-03-23T14:35:00.000Z"
+      }
+    }
+  }
+}
+```
+
+### `session.status.verified`
+
+Sent when a session is marked as verified. The payload structure is the same as `session.status.submitted`, with `status` updated to `VERIFIED`.
+
+```json
+{
+  "type": "session.status.verified",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "VERIFIED",
+    "...": "same structure as session.status.submitted"
+  }
+}
+```
+
+### `session.status.rejected`
+
+Sent when a session is marked as rejected. The payload structure is the same as `session.status.submitted`, with `status` updated to `REJECTED`.
+
+```json
+{
+  "type": "session.status.rejected",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "REJECTED",
+    "...": "same structure as session.status.submitted"
+  }
+}
+```
+
+## What to do with each event
+
+| Event | Common use cases |
+|-------|-----------------|
+| `session.created` | Log session creation, update your internal records, send a confirmation to your system |
+| `session.status.submitted` | Trigger your review workflow, notify reviewers, update applicant status in your system |
+| `session.status.verified` | Grant access, activate accounts, send confirmation emails, update CRM records |
+| `session.status.rejected` | Notify applicant, flag for manual review, trigger re-verification flow |

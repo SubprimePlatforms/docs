@@ -1,0 +1,225 @@
+---
+title: Webhooks
+description: Listen for events from deepidv so your integration can automatically trigger reactions
+---
+
+Webhooks allow you to receive real-time notifications when events happen in your deepidv account. Instead of polling the API, deepidv pushes event data to your application's webhook endpoint as a JSON payload via HTTP POST.
+
+Receiving webhook events helps you respond to asynchronous events, such as when a verification session is submitted, verified, or rejected.
+
+## Get started
+
+To start receiving webhook events in your app:
+
+<Steps>
+  <Step title="Create a webhook endpoint">
+    Set up an HTTPS endpoint on your server to receive POST requests from deepidv.
+  </Step>
+  <Step title="Register your endpoint">
+    Add your webhook endpoint URL in the deepidv Admin Console under **Integrations > Webhooks**.
+  </Step>
+  <Step title="Select events">
+    Choose which event types you want to subscribe to.
+  </Step>
+  <Step title="Verify signatures">
+    Use your signing secret to verify that incoming requests are from deepidv.
+  </Step>
+</Steps>
+
+## Register your endpoint
+
+You can configure webhooks in the [Admin Console](https://app.deepidv.com) under **Integrations > Webhooks**.
+
+When creating a webhook, you'll provide:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | A label to identify this webhook |
+| Destination URL | Yes | The HTTPS endpoint where events will be sent. Must be publicly accessible |
+| Events | Yes | One or more event types to subscribe to |
+| Description | No | Optional description for your reference |
+
+After creating a webhook, deepidv generates a **signing secret** (prefixed with `whsec_`). Store this secret securely — you'll use it to verify that incoming webhook requests are from deepidv.
+
+<Warning>
+Your signing secret is only shown once at creation time. If you lose it, you can reset it from the webhook settings, but this will invalidate the previous secret.
+</Warning>
+
+## Event types
+
+deepidv sends the following event types:
+
+| Event | Description |
+|-------|-------------|
+| `session.created` | A new verification session has been created |
+| `session.status.submitted` | An applicant has completed and submitted their verification session |
+| `session.status.verified` | A verification session has been marked as verified |
+| `session.status.rejected` | A verification session has been marked as rejected |
+
+You can subscribe to all events or only the ones relevant to your integration. See the [Event Object](/webhooks/event-object) reference for the full payload structure.
+
+## Create a handler
+
+Set up an HTTP endpoint that accepts POST requests with a JSON body. Your handler should:
+
+1. Parse the JSON request body containing the [event object](/webhooks/event-object)
+2. Verify the `deepidv-signature` header using your signing secret
+3. Return a `200` status code as quickly as possible
+4. Process the event asynchronously (after responding)
+
+<Info>
+deepidv considers any `2xx` response a successful delivery. If your endpoint returns a non-`2xx` status or times out (after 10 seconds), deepidv will retry the delivery.
+</Info>
+
+### Example endpoint
+
+<CodeGroup>
+```javascript Node.js (Express)
+const express = require("express");
+const app = express();
+
+app.post("/webhooks/deepidv", express.json(), (req, res) => {
+  const signature = req.headers["deepidv-signature"];
+  const event = req.body;
+
+  // 1. Verify the signature
+  if (signature !== process.env.DEEPIDV_WEBHOOK_SECRET) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  // 2. Return 200 immediately
+  res.status(200).json({ received: true });
+
+  // 3. Process the event asynchronously
+  switch (event.type) {
+    case "session.status.submitted":
+      // Applicant completed verification — trigger your review flow
+      console.log("Session submitted:", event.data.id);
+      break;
+    case "session.status.verified":
+      // Session verified — grant access, update records, etc.
+      console.log("Session verified:", event.data.id);
+      break;
+    case "session.status.rejected":
+      // Session rejected — notify applicant, flag for review, etc.
+      console.log("Session rejected:", event.data.id);
+      break;
+    case "session.created":
+      // New session created
+      console.log("Session created:", event.data.id);
+      break;
+    default:
+      console.log("Unhandled event type:", event.type);
+  }
+});
+
+app.listen(4242, () => console.log("Webhook server running on port 4242"));
+```
+
+```python Python (Flask)
+from flask import Flask, request, jsonify
+import os
+
+app = Flask(__name__)
+
+@app.route("/webhooks/deepidv", methods=["POST"])
+def webhook():
+    signature = request.headers.get("deepidv-signature")
+    event = request.get_json()
+
+    # 1. Verify the signature
+    if signature != os.environ.get("DEEPIDV_WEBHOOK_SECRET"):
+        return jsonify(error="Invalid signature"), 401
+
+    # 2. Process the event
+    event_type = event.get("type")
+    data = event.get("data")
+
+    if event_type == "session.status.submitted":
+        # Applicant completed verification
+        print(f"Session submitted: {data['id']}")
+    elif event_type == "session.status.verified":
+        # Session verified
+        print(f"Session verified: {data['id']}")
+    elif event_type == "session.status.rejected":
+        # Session rejected
+        print(f"Session rejected: {data['id']}")
+    elif event_type == "session.created":
+        # New session created
+        print(f"Session created: {data['id']}")
+    else:
+        print(f"Unhandled event type: {event_type}")
+
+    # 3. Return 200 immediately
+    return jsonify(received=True), 200
+
+if __name__ == "__main__":
+    app.run(port=4242)
+```
+</CodeGroup>
+
+## Verify signatures
+
+Every webhook request includes a `deepidv-signature` header containing your signing secret. Compare this value against the signing secret shown when you created the webhook to verify the request is from deepidv.
+
+```javascript
+const signature = req.headers["deepidv-signature"];
+
+if (signature !== process.env.DEEPIDV_WEBHOOK_SECRET) {
+  // Request is not from deepidv — reject it
+  return res.status(401).json({ error: "Invalid signature" });
+}
+```
+
+<Warning>
+Always verify the `deepidv-signature` header before processing any webhook event. Without verification, an attacker could send fake events to your endpoint to trigger unintended actions.
+</Warning>
+
+## Test your webhook
+
+You can send a test event from the Admin Console to verify your endpoint is working correctly:
+
+1. Go to **Integrations > Webhooks** in the [Admin Console](https://app.deepidv.com)
+2. Select your webhook
+3. Click **Send Test Event**
+4. Choose the event type to test
+5. Check your endpoint for the received event
+
+The test event contains sample data that matches the structure of a real event, so you can use it to validate your handler logic.
+
+## Retry behavior
+
+If your endpoint doesn't return a `2xx` response or doesn't respond within **10 seconds**, deepidv will retry the delivery. Events are retried with exponential backoff.
+
+| Scenario | Behavior |
+|----------|----------|
+| `2xx` response | Delivered successfully — no retry |
+| Non-`2xx` response | Retried with exponential backoff |
+| Timeout (10 seconds) | Logged as HTTP 408 — retried |
+| Endpoint unreachable | Retried with exponential backoff |
+
+## Best practices
+
+### Return a 200 response quickly
+
+Your endpoint should return a `200` response before performing any complex logic. Defer processing to a background job or queue to avoid timeouts.
+
+### Handle duplicate events
+
+Your endpoint may occasionally receive the same event more than once. Guard against this by logging processed event IDs and skipping duplicates.
+
+### Only listen to events you need
+
+Subscribe only to the event types your integration requires. This reduces unnecessary load on your server.
+
+### Process events asynchronously
+
+Use an asynchronous queue to process incoming events. This prevents large spikes in webhook deliveries from overwhelming your server.
+
+### Use HTTPS
+
+Your webhook endpoint must use HTTPS to receive events. deepidv will not send events to HTTP endpoints.
+
+### Keep your signing secret secure
+
+Store your signing secret in an environment variable or secret manager — never hardcode it in your application. If you suspect your secret has been compromised, reset it immediately from the Admin Console.
