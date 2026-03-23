@@ -36,6 +36,7 @@ Returns a `VERIFIED` session with every possible field populated. Use this to va
 - `location`, `submitted_at`, `meta_data`
 - Full `uploads` (primary, secondary, and tertiary IDs, selfies, custom prompt)
 - Complete `analysis_data` with all sub-objects
+- `user` (applicant profile) and `sender_user` (session creator profile)
 
 **Analysis data includes:**
 
@@ -128,6 +129,24 @@ Returns a `VERIFIED` session with every possible field populated. Use this to va
       "document_risk_data": { "documents_analyzed": 1, "overall_risk_score": 25, "..." : "..." },
       "custom_form_data": [{ "question": "What is your Company Business Number", "answer": "1234567890001", "type": "short-text" }]
     }
+  },
+  "user": {
+    "id": "sandbox-user-000000",
+    "email": "jane.doe@sandbox.example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "phone": "+14165551234",
+    "created_at": "2025-01-10T08:00:00.000Z",
+    "updated_at": "2025-01-15T10:42:00.000Z"
+  },
+  "sender_user": {
+    "id": "your-user-id",
+    "email": "admin@sandbox.example.com",
+    "first_name": "Admin",
+    "last_name": "User",
+    "phone": "+14165559999",
+    "created_at": "2024-12-01T09:00:00.000Z",
+    "updated_at": "2025-01-15T10:30:00.000Z"
   },
   "resource_links": {}
 }

@@ -22,7 +22,7 @@ Manually updates the status of a verification session to either `VERIFIED` or `R
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | Yes | The session ID (returned as `idv_id` when the session was created) |
+| `id` | string | Yes | The session ID (returned as `id` when the session was created) |
 
 ### Body parameters
 
@@ -75,7 +75,7 @@ response = requests.patch(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `session_record` | object | The updated session object (same shape as the [Retrieve Session](/api-reference/sessions/retrieve-session) response) |
+| `session_record` | object | The updated session object (same shape as the `session_record` in the [Retrieve Session](/api-reference/sessions/retrieve-session) response). Does not include `resource_links`, `user`, or `sender_user` |
 
 ### Error responses
 
