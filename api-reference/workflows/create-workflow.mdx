@@ -1,0 +1,252 @@
+---
+title: Create Workflow
+description: Create a new verification workflow
+api: POST /v1/workflows
+---
+
+```
+POST /v1/workflows
+```
+
+Creates a new workflow for your organization. Workflows define the ordered sequence of verification steps that applicants must complete.
+
+Currently supported steps: `ID_VERIFICATION`, `FACE_LIVENESS`, `AGE_ESTIMATION`, `PEP_SANCTIONS`, `ADVERSE_MEDIA`.
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `x-api-key` | Yes | Your API key |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Workflow name (1–255 characters) |
+| `steps` | array | Yes | Ordered list of verification steps (1–10, no duplicates) |
+| `steps[].id` | string | Yes | Step identifier (see [Available Steps](#available-steps)) |
+| `steps[].config` | object | No | Step-specific configuration overrides (see [Step Configuration](#step-configuration)) |
+
+### Available Steps
+
+| Step ID | Description |
+|---------|-------------|
+| `ID_VERIFICATION` | Government ID scanning and validation |
+| `FACE_LIVENESS` | Active anti-spoofing liveness detection |
+| `AGE_ESTIMATION` | Biometric age estimation |
+| `PEP_SANCTIONS` | Politically exposed persons & sanctions screening |
+| `ADVERSE_MEDIA` | Negative press and media mention detection |
+
+### Step Configuration
+
+Each step accepts optional configuration. If omitted, sensible defaults are applied.
+
+#### ID_VERIFICATION config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `minimum_age` | integer | `18` | Minimum accepted age |
+| `maximum_age` | integer | `51` | Maximum accepted age |
+| `expiry_date_years` | integer | `2` | Maximum years until ID expiry is rejected |
+| `require_secondary_id` | boolean | `false` | Require a second form of ID |
+| `require_tertiary_id` | boolean | `false` | Require a third form of ID |
+| `face_front_photo_only` | boolean | `false` | Only capture front-facing photo |
+| `require_front_only` | boolean | `false` | Only scan front of ID |
+
+#### FACE_LIVENESS config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `confidence_threshold` | integer | `70` | Liveness confidence threshold (1–100) |
+
+#### AGE_ESTIMATION config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `minimum_age` | integer | `18` | Minimum age requirement (1–100) |
+
+#### PEP_SANCTIONS / ADVERSE_MEDIA
+
+No configuration options. These steps use default settings.
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.deepidv.com/v1/workflows" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Full KYC Workflow",
+    "steps": [
+      {
+        "id": "ID_VERIFICATION",
+        "config": {
+          "minimum_age": 21,
+          "expiry_date_years": 5
+        }
+      },
+      {
+        "id": "FACE_LIVENESS",
+        "config": {
+          "confidence_threshold": 85
+        }
+      },
+      { "id": "AGE_ESTIMATION" },
+      { "id": "PEP_SANCTIONS" },
+      { "id": "ADVERSE_MEDIA" }
+    ]
+  }'
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/workflows",
+  {
+    method: "POST",
+    headers: {
+      "x-api-key": "YOUR_API_KEY",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: "Full KYC Workflow",
+      steps: [
+        {
+          id: "ID_VERIFICATION",
+          config: { minimum_age: 21, expiry_date_years: 5 },
+        },
+        {
+          id: "FACE_LIVENESS",
+          config: { confidence_threshold: 85 },
+        },
+        { id: "AGE_ESTIMATION" },
+        { id: "PEP_SANCTIONS" },
+        { id: "ADVERSE_MEDIA" },
+      ],
+    }),
+  }
+);
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.deepidv.com/v1/workflows",
+    headers={
+        "x-api-key": "YOUR_API_KEY",
+        "Content-Type": "application/json",
+    },
+    json={
+        "name": "Full KYC Workflow",
+        "steps": [
+            {
+                "id": "ID_VERIFICATION",
+                "config": {"minimum_age": 21, "expiry_date_years": 5},
+            },
+            {
+                "id": "FACE_LIVENESS",
+                "config": {"confidence_threshold": 85},
+            },
+            {"id": "AGE_ESTIMATION"},
+            {"id": "PEP_SANCTIONS"},
+            {"id": "ADVERSE_MEDIA"},
+        ],
+    },
+)
+```
+</CodeGroup>
+
+## Response
+
+### 201 — Created
+
+Returns the full workflow record. The response uses the same format as [Retrieve Workflow](/api-reference/workflows/retrieve-workflow).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `workflow` | object | The created workflow record |
+| `workflow.id` | string | Unique workflow identifier |
+| `workflow.name` | string | Workflow name |
+| `workflow.status` | string | Always `active` for newly created workflows |
+| `workflow.organization_id` | string | Your organization ID |
+| `workflow.created_at` | string | ISO 8601 creation timestamp |
+| `workflow.updated_at` | string | ISO 8601 last-updated timestamp |
+| `workflow.steps` | array | Ordered list of steps with full resolved configuration |
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| `400 Bad Request` | Invalid request body (missing name, invalid step ID, invalid config, duplicate steps) |
+| `401 Unauthorized` | Missing or invalid API key |
+| `403 Forbidden` | Sandbox API keys cannot create workflows |
+| `429 Too Many Requests` | Rate limit exceeded |
+
+<ResponseExample>
+```json 201
+{
+  "workflow": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Full KYC Workflow",
+    "status": "active",
+    "organization_id": "da760e2f-2f7b-4f5d-b394-766ce9c4fad8",
+    "created_at": "2026-03-31T14:00:00.000Z",
+    "updated_at": "2026-03-31T14:00:00.000Z",
+    "steps": [
+      {
+        "id": "id-verification",
+        "config": {
+          "age_restriction_settings": {
+            "age_restriction_mode": "slider",
+            "country_category_minimum_age": null,
+            "minimum_age": { "lower": 21, "upper": 51 }
+          },
+          "expiry_date_settings": { "expiry_date": 5 },
+          "face_scan_settings": { "face_front_photo_only": false },
+          "id_scan_face_settings": { "require_front_only": false },
+          "id_scan_settings": {
+            "require_secondary_id": false,
+            "require_tertiary_id": false
+          },
+          "valid_id_types_settings": {
+            "valid_id_types": {
+              "driver_license_ca": true,
+              "driver_license_us": true,
+              "passport_ca": true,
+              "passport_us": true
+            }
+          },
+          "valid_states_settings": {
+            "valid_states": { "AL": true, "AK": true, "AZ": true, "...": "all US + CA" }
+          }
+        }
+      },
+      {
+        "id": "face-liveness",
+        "config": {
+          "face_liveness_confidence_settings": { "confidence_threshold": 85 },
+          "face_liveness_settings": { "preferred_liveness_method": "FaceMovementChallenge" }
+        }
+      },
+      {
+        "id": "age-estimation",
+        "config": {
+          "age_restriction_settings": {
+            "age_restriction_mode": "slider",
+            "country_category_minimum_age": null,
+            "minimum_age": { "lower": 18, "upper": 100 }
+          }
+        }
+      },
+      { "id": "pep-sanctions", "config": {} },
+      { "id": "adverse-media", "config": {} }
+    ]
+  }
+}
+```
+</ResponseExample>

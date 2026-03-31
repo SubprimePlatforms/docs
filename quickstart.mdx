@@ -68,6 +68,10 @@ export const VideoEmbed = ({ src, title = "Video" }) => (
     <Warning>
       Your API key is a secret. Keep it server-side only — never expose it in frontend code or commit it to version control.
     </Warning>
+
+    <Card title="Download Postman Collection" icon="download" href="https://deepidv-public-bucket.s3.us-east-1.amazonaws.com/api/DeepIDV-Open-API.postman_collection.json">
+      Import our pre-built Postman collection to start testing every endpoint immediately. Just set the `api_key` variable and go.
+    </Card>
   </Step>
 
   <Step title="Launch a verification session">
