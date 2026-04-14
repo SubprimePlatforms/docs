@@ -1,0 +1,604 @@
+{
+	"info": {
+		"name": "DeepIDV Open API",
+		"description": "Comprehensive collection for the DeepIDV Open API. Set the `api_key` variable in the collection variables before running requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "key",
+				"value": "x-api-key",
+				"type": "string"
+			},
+			{
+				"key": "value",
+				"value": "{{api_key}}",
+				"type": "string"
+			},
+			{
+				"key": "in",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://api.deepidv.com",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "workflow_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "bank_statement_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "external_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Returns 200 OK if the API server is running. No authentication required."
+					}
+				}
+			]
+		},
+		{
+			"name": "Sessions (IDV)",
+			"description": "Identity verification session endpoints. Mounted at `/v1/sessions` (and legacy `/v1/idv`).",
+			"item": [
+				{
+					"name": "Create Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var json = pm.response.json();",
+									"    if (json.idv_id) {",
+									"        pm.collectionVariables.set('session_id', json.idv_id);",
+									"        console.log('Saved session_id: ' + json.idv_id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"applicant@example.com\",\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\",\n    \"phone\": \"+15192223333\",\n    \"external_id\": \"your-internal-ref-123\",\n    \"send_email_invite\": true,\n    \"send_phone_invite\": true,\n    \"workflow_id\": \"\",\n    \"redirect_url\": \"https://yourapp.com/verify-callback\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sessions",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"]
+						},
+						"description": "Creates a new IDV session and sends an email/SMS invite to the applicant.\n\n**Required fields:** email, first_name, last_name, phone (E.164 format e.g. +15192223333)\n\n**Optional fields:** external_id, send_email_invite (default true), send_phone_invite (default true), workflow_id, redirect_url\n\n- `redirect_url`: HTTPS URL to redirect the applicant to after the session ends. Query params `session_id`, `status`, and `reason` are appended automatically.\n\nAccepts both camelCase and snake_case field names.\n\nAuto-saves the returned `idv_id` to the `session_id` collection variable."
+					}
+				},
+				{
+					"name": "Create Session (with Workflow)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var json = pm.response.json();",
+									"    if (json.idv_id) {",
+									"        pm.collectionVariables.set('session_id', json.idv_id);",
+									"        console.log('Saved session_id: ' + json.idv_id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"applicant@example.com\",\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\",\n    \"phone\": \"+15192223333\",\n    \"external_id\": \"your-internal-ref-456\",\n    \"send_email_invite\": true,\n    \"send_phone_invite\": false,\n    \"workflow_id\": \"{{workflow_id}}\",\n    \"redirect_url\": \"https://yourapp.com/verify-callback\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sessions",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"]
+						},
+						"description": "Creates a session tied to a specific workflow. Set the `workflow_id` collection variable first (e.g. from the List Workflows request)."
+					}
+				},
+				{
+					"name": "Create Session (No Invites)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var json = pm.response.json();",
+									"    if (json.idv_id) {",
+									"        pm.collectionVariables.set('session_id', json.idv_id);",
+									"        console.log('Saved session_id: ' + json.idv_id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"applicant@example.com\",\n    \"first_name\": \"Jane\",\n    \"last_name\": \"Smith\",\n    \"phone\": \"+15192223333\",\n    \"send_email_invite\": false,\n    \"send_phone_invite\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sessions",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"]
+						},
+						"description": "Creates a session without sending any email or SMS invites. Useful for programmatic flows where you handle the invite delivery yourself."
+					}
+				},
+				{
+					"name": "List Sessions (My Sent)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/sessions?limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of results (1-500, default 50)"
+								},
+								{
+									"key": "next_token",
+									"value": "",
+									"description": "Pagination token from previous response",
+									"disabled": true
+								},
+								{
+									"key": "start_date",
+									"value": "2024-01-01T00:00:00Z",
+									"description": "ISO 8601 start date filter",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31T23:59:59Z",
+									"description": "ISO 8601 end date filter",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lists sessions sent by the authenticated API key user (default mode). Supports pagination via `next_token` and date range filtering."
+					}
+				},
+				{
+					"name": "List Sessions (By Organization)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/sessions?by_organization=true&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"],
+							"query": [
+								{
+									"key": "by_organization",
+									"value": "true",
+									"description": "List all sessions across the organization"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "next_token",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "start_date",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lists all sessions across the entire organization, regardless of which user sent them."
+					}
+				},
+				{
+					"name": "List Sessions (By External ID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/sessions?external_id={{external_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"],
+							"query": [
+								{
+									"key": "external_id",
+									"value": "{{external_id}}",
+									"description": "Your external reference ID"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "next_token",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "start_date",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lists sessions matching a specific external ID you provided when creating the session."
+					}
+				},
+				{
+					"name": "List Sessions (By Workflow ID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/sessions?workflow_id={{workflow_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions"],
+							"query": [
+								{
+									"key": "workflow_id",
+									"value": "{{workflow_id}}",
+									"description": "Filter by workflow ID"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "next_token",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "start_date",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lists sessions created under a specific workflow."
+					}
+				},
+				{
+					"name": "Get Session by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/sessions/{{session_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions", "{{session_id}}"]
+						},
+						"description": "Fetches a single session by its ID. Returns the full session record with `analysis_data`, `uploads` booleans, and pre-signed S3 `resource_links` for any uploaded documents/images (valid for 5 minutes)."
+					}
+				},
+				{
+					"name": "Update Session Status (Verify)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"new_status\": \"VERIFIED\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sessions/{{session_id}}/update-status",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions", "{{session_id}}", "update-status"]
+						},
+						"description": "Marks a session as VERIFIED. Only allowed values for `new_status` are `VERIFIED` and `REJECTED`."
+					}
+				},
+				{
+					"name": "Update Session Status (Reject)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"new_status\": \"REJECTED\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sessions/{{session_id}}/update-status",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "sessions", "{{session_id}}", "update-status"]
+						},
+						"description": "Marks a session as REJECTED."
+					}
+				}
+			]
+		},
+		{
+			"name": "Workflows",
+			"description": "Workflow template endpoints. Workflows define the steps an applicant goes through in a session.",
+			"item": [
+				{
+					"name": "List Workflows",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var json = pm.response.json();",
+									"    if (json.workflows && json.workflows.length > 0) {",
+									"        pm.collectionVariables.set('workflow_id', json.workflows[0].id);",
+									"        console.log('Saved workflow_id: ' + json.workflows[0].id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/workflows",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "workflows"]
+						},
+						"description": "Lists all workflows for your organization. Returns `id`, `name`, `status`, `steps` (array of step IDs like ID_VERIFICATION, FACE_LIVENESS, etc.), and `created_at` for each workflow.\n\nAuto-saves the first workflow's ID to the `workflow_id` collection variable."
+					}
+				},
+				{
+					"name": "Create Workflow",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var json = pm.response.json();",
+									"    if (json.workflow && json.workflow.id) {",
+									"        pm.collectionVariables.set('workflow_id', json.workflow.id);",
+									"        console.log('Saved workflow_id: ' + json.workflow.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"KYC Verification\",\n    \"steps\": [\n        {\n            \"id\": \"ID_VERIFICATION\",\n            \"config\": {\n                \"minimum_age\": 18,\n                \"expiry_date_years\": 2\n            }\n        },\n        {\n            \"id\": \"FACE_LIVENESS\",\n            \"config\": {\n                \"confidence_threshold\": 70\n            }\n        },\n        {\n            \"id\": \"PEP_SANCTIONS\"\n        },\n        {\n            \"id\": \"ADVERSE_MEDIA\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/workflows",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "workflows"]
+						},
+						"description": "Creates a new workflow for your organization.\n\n**Required fields:** name, steps (array with at least 1 step)\n\n**Available step IDs:** ID_VERIFICATION, FACE_LIVENESS, AGE_ESTIMATION, PEP_SANCTIONS, ADVERSE_MEDIA\n\n**Optional config per step:**\n- ID_VERIFICATION: minimum_age, maximum_age, expiry_date_years, require_secondary_id, require_tertiary_id, face_front_photo_only, require_front_only\n- FACE_LIVENESS: confidence_threshold (1-100, default 70)\n- AGE_ESTIMATION: minimum_age (1-100, default 18)\n- PEP_SANCTIONS / ADVERSE_MEDIA: no config needed\n\nAuto-saves the created workflow's ID to the `workflow_id` collection variable."
+					}
+				},
+				{
+					"name": "Create Workflow (Minimal)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var json = pm.response.json();",
+									"    if (json.workflow && json.workflow.id) {",
+									"        pm.collectionVariables.set('workflow_id', json.workflow.id);",
+									"        console.log('Saved workflow_id: ' + json.workflow.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Basic Liveness Check\",\n    \"steps\": [\n        {\n            \"id\": \"FACE_LIVENESS\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/workflows",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "workflows"]
+						},
+						"description": "Creates a minimal workflow with a single step using all default configuration. Demonstrates that config is optional on every step."
+					}
+				},
+				{
+					"name": "Get Workflow by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/workflows/{{workflow_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "workflows", "{{workflow_id}}"]
+						},
+						"description": "Fetches a single workflow by ID with its full step configuration. Steps can include: id-verification, face-liveness, age-estimation, pep-sanctions, bank-statement-upload, custom-prompt, document-upload, custom-form, title-search, adverse-media."
+					}
+				}
+			]
+		},
+		{
+			"name": "Financial (Bank Statements)",
+			"description": "Bank statement request endpoints.",
+			"item": [
+				{
+					"name": "List Bank Statements",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/financial",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "financial"],
+							"query": [
+								{
+									"key": "nextToken",
+									"value": "",
+									"description": "Pagination token from previous response",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lists all bank statement records for the organization (excludes credit-terms type). Returns up to 500 records per page."
+					}
+				},
+				{
+					"name": "Get Bank Statement by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/financial/{{bank_statement_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "financial", "{{bank_statement_id}}"]
+						},
+						"description": "Fetches a single bank statement by ID. If the record has status COMPLETED and type \"request\", the full parsed statement data (accounts, institution info) is included in the response."
+					}
+				},
+				{
+					"name": "Get Bank Statements by External ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/financial/externalId/{{external_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["v1", "financial", "externalId", "{{external_id}}"],
+							"query": [
+								{
+									"key": "nextToken",
+									"value": "",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Fetches bank statement records matching a specific external ID."
+					}
+				}
+			]
+		}
+	]
+}
