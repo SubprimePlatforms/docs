@@ -127,10 +127,20 @@ response = requests.post(
 ```json 200
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "session_url": "https://app.deepidv.com",
+  "session_url": "https://verify.deepidv.com/session/a1b2c3d4-e5f6-7890-abcd-ef1234567890?oid=your-org-id&redirect_url=https%3A%2F%2Fyourapp.com%2Fverify-callback",
   "externalId": "user-12345",
-  "expires_at": "2026-04-12T15:30:00.000Z",
-  "links": []
+  "links": [
+    {
+      "rel": "admin_console",
+      "href": "https://app.deepidv.com/dashboard/session/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "description": "Click this link to view this session in your DeepIDV admin console"
+    },
+    {
+      "rel": "session_details",
+      "href": "https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "description": "Use this ref to fetch the session details"
+    }
+  ]
 }
 ```
 </ResponseExample>

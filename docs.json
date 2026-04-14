@@ -83,7 +83,7 @@
           {
             "group": "Credit Check",
             "pages": [
-              "api-reference/credit-check/create-credit-check-session"
+              "api-reference/credit-check/create-credit-check"
             ]
           },
           {
