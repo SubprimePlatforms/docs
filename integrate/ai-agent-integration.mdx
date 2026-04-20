@@ -1,31 +1,26 @@
 ---
 title: AI Agent Integration (MCP Server)
-description: Connect AI agents to DeepIDV through its hosted MCP server
+description: deepidv's hosted MCP server brings identity verification and anti-fraud workflows directly into your AI agents — no API wiring required.
 ---
-
-> Use DeepIDV with AI agents through its hosted Model Context Protocol (MCP) server. Connect once, complete OAuth, and let your assistant create workflows, manage verification sessions, and review financial requests using natural language.
 
 ## Overview
 
-DeepIDV provides a hosted MCP server at `https://mcp.deepidv.com/v1/mcp`.
+deepidv's hosted MCP server lets you connect any compatible AI client to your deepidv account. Once you add the server and complete OAuth, the client can call deepidv tools on behalf of the authenticated user in your organization.
 
-You do not need to clone a repository, install a local package, or run a local Node.js process. Add DeepIDV as a remote MCP server in your client, authenticate with your DeepIDV credentials, and your assistant can call DeepIDV tools directly.
-
-This is useful when you want an AI assistant to:
+With this integration, you can:
 
 - List and inspect verification sessions
 - Retrieve verification artifacts and supporting links
-- Create workflows with DeepIDV verification steps
-- Review bank statement records and send bank statement requests
+- Create and manage workflows with deepidv verification steps
+- List bank statement records and send bank statement requests
 
 ## Requirements
 
 Before you connect a client, make sure you have:
 
-- A DeepIDV account
-- An active DeepIDV user account
-- An active API key owned by that same user
-- An MCP client that supports remote HTTP MCP servers with OAuth
+- A deepidv account with an active user
+- An API key owned by that user
+- An MCP client that supports remote HTTP servers with OAuth
 
 ## Server details
 
@@ -40,7 +35,7 @@ Before you connect a client, make sure you have:
 
 ### Claude Web
 
-Use Claude's connectors UI to add DeepIDV as a remote MCP server.
+Use Claude's connectors UI to add deepidv as a remote MCP server.
 
 <Steps>
   <Step title="Open Connectors">
@@ -56,18 +51,18 @@ Use Claude's connectors UI to add DeepIDV as a remote MCP server.
 
   </Step>
 
-  <Step title="Enter your DeepIDV credentials">
+  <Step title="Enter your deepidv credentials">
     If Claude requests static OAuth credentials, use:
 
-    - `client_id`: your DeepIDV user ID
-    - `client_secret`: any active DeepIDV API key owned by that same user
+    - `client_id`: your deepidv user ID
+    - `client_secret`: any active deepidv API key owned by that same user
 
     You can retrieve your API key from [API Authentication](/authentication).
 
   </Step>
 
 <Step title="Complete OAuth in the browser">
-  Claude can discover DeepIDV's OAuth metadata from the MCP server URL. Complete
+  Claude can discover deepidv's OAuth metadata from the MCP server URL. Complete
   the browser-based approval flow when prompted.
 </Step>
 
@@ -78,21 +73,21 @@ Use Claude's connectors UI to add DeepIDV as a remote MCP server.
 
 ### Claude Code
 
-Claude Code can connect directly to DeepIDV over remote MCP using HTTP.
+Claude Code can connect directly to deepidv over remote MCP using HTTP.
 
 ```bash
 claude mcp add --transport http \
-  --client-id YOUR_DEEPIDV_USER_ID --client-secret --callback-port 8787 \
+  --client-id YOUR_deepidv_USER_ID --client-secret --callback-port 8787 \
   deepidv https://mcp.deepidv.com/v1/mcp
 ```
 
 After adding the server:
 
-1. Enter your active DeepIDV API key when Claude Code prompts for the client secret.
+1. Enter your active deepidv API key when Claude Code prompts for the client secret.
 2. Run `/mcp` inside Claude Code.
 3. Complete the browser-based OAuth flow.
 
-Use callback port `8787` so the OAuth redirect matches DeepIDV's hosted OAuth configuration.
+Use callback port `8787` so the OAuth redirect matches deepidv's hosted OAuth configuration.
 
 ### Cursor
 
@@ -132,18 +127,18 @@ Claude Desktop can use the same connectors flow as Claude Web for a smoother set
 
   </Step>
 
-  <Step title="Enter your DeepIDV credentials">
+  <Step title="Enter your deepidv credentials">
     If Claude Desktop requests static OAuth credentials, use:
 
-    - `client_id`: your DeepIDV user ID
-    - `client_secret`: any active DeepIDV API key owned by that same user
+    - `client_id`: your deepidv user ID
+    - `client_secret`: any active deepidv API key owned by that same user
 
     You can retrieve your API key from [API Authentication](/authentication).
 
   </Step>
 
 <Step title="Complete OAuth in the browser">
-  Claude Desktop can discover DeepIDV's OAuth metadata from the MCP server URL.
+  Claude Desktop can discover deepidv's OAuth metadata from the MCP server URL.
   Complete the browser-based approval flow when prompted.
 </Step>
 
@@ -154,14 +149,14 @@ Claude Desktop can use the same connectors flow as Claude Web for a smoother set
 
 ## Authentication Model
 
-DeepIDV uses hosted OAuth 2.0 with PKCE for MCP access.
+deepidv uses hosted OAuth 2.0 with PKCE for MCP access.
 
 The browser approval flow does not replace your credentials. `client_id` and `client_secret` are still required for MCP access:
 
-- `client_id` is your DeepIDV user ID
-- `client_secret` is an active DeepIDV API key owned by that same user
+- `client_id` is your deepidv user ID
+- `client_secret` is an active deepidv API key owned by that same user
 
-Access is scoped to the authenticated DeepIDV user and organization. Each tool call is validated against active account state before it runs.
+Access is scoped to the authenticated deepidv user and organization. Each tool call is validated against active account state before it runs.
 
 ## Available Tools
 
@@ -181,7 +176,7 @@ Access is scoped to the authenticated DeepIDV user and organization. Each tool c
 | ----------------- | ----------------------------------------------------------------------- |
 | `list_workflows`  | List workflows available to the authenticated organization.             |
 | `get_workflow`    | Retrieve one workflow and its configured steps.                         |
-| `create_workflow` | Create a reusable workflow with one or more DeepIDV verification steps. |
+| `create_workflow` | Create a reusable workflow with one or more deepidv verification steps. |
 
 Current workflow step IDs exposed through MCP:
 
@@ -214,22 +209,22 @@ Once the server is connected, prompts like these should work:
 ### `401 Unauthorized` or `invalid_token`
 
 - Re-run the OAuth flow
-- Confirm the `client_id` is your DeepIDV user ID
+- Confirm the `client_id` is your deepidv user ID
 - Confirm the API key used as `client_secret` belongs to that same user
-- Confirm the DeepIDV user and organization are active
+- Confirm the deepidv user and organization are active
 
 ### Redirect URI not registered
 
-Your MCP client may be using a redirect URI that is not currently allowed by the DeepIDV hosted OAuth server. Use a client with standard remote MCP OAuth support, or contact [DeepIDV support](https://www.deepidv.com/support).
+Your MCP client may be using a redirect URI that is not currently allowed by the deepidv hosted OAuth server. Use a client with standard remote MCP OAuth support, or contact [deepidv support](https://www.deepidv.com/support).
 
 ### The client tries to install a local package
 
-DeepIDV should connect as a hosted remote MCP server and should not require a local DeepIDV server package for Claude Web, Claude Desktop, Claude Code, or Cursor.
+deepidv should connect as a hosted remote MCP server and should not require a local deepidv server package for Claude Web, Claude Desktop, Claude Code, or Cursor.
 
 ## Security Notes
 
 - All MCP requests use bearer-token authentication
-- Access is limited to the authenticated DeepIDV organization and user
+- Access is limited to the authenticated deepidv organization and user
 - Tool calls are rate-limited
 - Verification artifacts and returned links should be treated as sensitive customer data
 
@@ -237,7 +232,7 @@ DeepIDV should connect as a hosted remote MCP server and should not require a lo
 
 <CardGroup cols={2}>
   <Card title="Agent Skills Repository" icon="github" href="https://github.com/Deep-Identity-Inc/agent-skills">
-    Browse the public repository for DeepIDV agent skills and MCP documentation.
+    Browse the public repository for deepidv agent skills and MCP documentation.
   </Card>
 
 <Card
@@ -249,10 +244,10 @@ DeepIDV should connect as a hosted remote MCP server and should not require a lo
 </Card>
 
 <Card title="API Authentication" icon="key" href="/authentication">
-  Find your API key and review how DeepIDV authentication works.
+  Find your API key and review how deepidv authentication works.
 </Card>
 
   <Card title="Support" icon="life-ring" href="https://www.deepidv.com/support">
-    Contact DeepIDV if you need help with client compatibility or credentials.
+    Contact deepidv if you need help with client compatibility or credentials.
   </Card>
 </CardGroup>

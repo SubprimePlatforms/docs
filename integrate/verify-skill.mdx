@@ -1,15 +1,15 @@
 ---
 title: Identity Verification Skill
-description: Use the DeepIDV Verify skill to let compatible AI agents call DeepIDV verification APIs directly
+description: Use the deepidv Verify skill to let compatible AI agents call deepidv verification APIs directly
 ---
 
-> Use the DeepIDV Verify skill when you want an AI agent to work directly with DeepIDV's verification API. The skill gives the agent the right endpoint choices, request patterns, and authentication behavior so it can create sessions, inspect results, and manage workflows without you hand-writing the integration logic each time.
+> Use the deepidv Verify skill when you want an AI agent to work directly with deepidv's verification API. The skill gives the agent the correct endpoint choices, request patterns, and authentication behavior — so it can create sessions, inspect results, and manage workflows without you hand-writing integration logic each time.
 
 ## Overview
 
 This guide is for teams using AI agents that support repository-based skills.
 
-The DeepIDV Verify skill is designed for direct API-driven work such as:
+The deepidv Verify skill is designed for direct API-driven work, including:
 
 - Launching verification sessions
 - Listing and inspecting existing sessions
@@ -32,25 +32,24 @@ Once the skill is set up, your agent should be able to:
 
 - Start a new applicant verification flow from a plain-English prompt
 - Find existing sessions by external ID, workflow, or time range
-- Pull the full result for a specific session
-- Create a workflow with DeepIDV verification steps
-- Help operators review outcomes before they take action
+- Retrieve the full result for a specific session
+- Create a workflow with deepidv verification steps
+- Help operators review outcomes before taking action
 
 ## Before You Start
 
 Make sure you have:
 
-- A DeepIDV account
-- An active API key
+- A deepidv account with an active API key
 - An agent that supports repository-based skills
-- A place to store the key securely in your local environment
+- A secure place to store the API key in your local environment
 
 <Tip>
   If you only need the API key itself, see [API
   Authentication](/authentication).
 </Tip>
 
-## Install The Skill
+## Install the Skill
 
 If your agent uses the open agent skills ecosystem, install the deepidv Verify skill with the Skills CLI:
 
@@ -58,7 +57,7 @@ If your agent uses the open agent skills ecosystem, install the deepidv Verify s
 npx skills add Deep-Identity-Inc/agent-skills@deepidv-verify -g -y
 ```
 
-What this does:
+This command:
 
 - Pulls the `deepidv-verify` skill from the public deepidv agent-skills repository
 - Installs it at the user level with `-g`
@@ -66,58 +65,57 @@ What this does:
 
 After installation:
 
-1. Restart your agent or editor if it does not automatically reload installed skills.
-2. Confirm the skill is available by asking the agent to use deepidv Verify, or by running `npx skills check` to confirm the install is recognized.
+1. Restart your agent or editor if it does not reload automatically.
+2. Confirm the skill is active by asking your agent to use deepidv Verify, or run `npx skills check` to verify the install.
 
 <Note>
-  Some compatible agents can also discover the skill directly from the
-  repository, but installing it explicitly with the Skills CLI is the clearest
-  setup path.
+  Some compatible agents can discover the skill directly from the repository,
+  but using the Skills CLI is the most reliable setup path.
 </Note>
 
 ## Set Up Credentials
 
-The Verify skill authenticates with the `x-api-key` header, but you do not need to add that header manually in your prompts. The skill resolves credentials automatically in this order:
+The Verify skill authenticates using the `x-api-key` header — you do not need to include it manually in your prompts. The skill resolves credentials automatically in this order:
 
 1. `DEEPIDV_API_KEY` environment variable
 2. `.deepidv/credentials` in the current project root
 3. `.deepidv/credentials` in your home directory
 
-You can store the credential file as either a raw key or a `KEY=value` pair:
+Store the credential file as either a raw key or a `KEY=value` pair:
 
 ```text
 DEEPIDV_API_KEY=sk_test_example
 ```
 
 <Warning>
-  Never commit API keys to the repository. Use sandbox keys for testing and live
-  keys only when you are ready for production traffic.
+  Never commit API keys to your repository. Use sandbox keys for testing and
+  switch to live keys only when you are ready for production traffic.
 </Warning>
 
-## Start With A Simple Flow
+## Start With a Simple Flow
 
-The best way to validate the skill is to use it in the same order a real integration would follow.
+The best way to validate the skill is to follow the same order a real integration would use.
 
 <Steps>
   <Step title="Confirm the agent can see your key">
-    Make sure the key is available through `DEEPIDV_API_KEY` or a `.deepidv/credentials` file before asking the agent to perform DeepIDV tasks.
+    Make sure the key is available through `DEEPIDV_API_KEY` or a `.deepidv/credentials` file before asking the agent to perform any deepidv tasks.
   </Step>
 
-<Step title="Ask the agent to list workflows">
-  Start with a read-only prompt such as "List my available DeepIDV workflows."
-  This confirms authentication and shows the workflow IDs you can reuse later.
+<Step title="List your workflows">
+  Start with a read-only prompt: "List my available deepidv workflows." This
+  confirms authentication and surfaces the workflow IDs you can reuse later.
 </Step>
 
-<Step title="Create or choose a workflow">
-  If you already have a workflow, the agent can use it immediately. If not, ask
-  it to create one with the checks you need, such as ID verification and face
-  liveness.
+<Step title="Create or select a workflow">
+  If you already have a workflow, the agent can use it immediately. Otherwise,
+  ask it to create one with the checks you need — such as ID verification and
+  face liveness.
 </Step>
 
 <Step title="Launch a verification session">
   Ask the agent to create a session for a real or test applicant. The skill will
-  route the request to the correct session endpoint and return the session ID
-  and applicant link.
+  route the request to the correct endpoint and return the session ID and
+  applicant link.
 </Step>
 
   <Step title="Inspect the outcome">
@@ -125,23 +123,23 @@ The best way to validate the skill is to use it in the same order a real integra
   </Step>
 </Steps>
 
-## Use Prompt Patterns That Map Cleanly
+## Prompt Patterns That Work Well
 
-You do not need to tell the agent which endpoint to call. Ask for the business outcome you want.
+You do not need to specify which endpoint to call — ask for the outcome you want.
 
-Good prompt patterns include:
+Good examples:
 
 - "Create a verification session for Jane Smith using workflow `wf_abc123`."
 - "Find sessions for external ID `user-12345`."
-- "Show me the full DeepIDV result for session `SESSION_ID`."
+- "Show me the full deepidv result for session `SESSION_ID`."
 - "Create a workflow named Standard KYC with ID verification and face liveness."
-- "List my workflows and explain which steps each one includes."
+- "List my workflows and explain what steps each one includes."
 
-The skill maps those requests to the relevant session and workflow endpoints automatically.
+The skill maps these requests to the relevant session and workflow endpoints automatically.
 
-## What The Skill Covers
+## What the Skill Covers
 
-The current skill is focused on verification and screening workflows:
+The skill is focused on verification and screening workflows:
 
 - Face liveness
 - Identity verification
@@ -150,55 +148,51 @@ The current skill is focused on verification and screening workflows:
 - AML and sanctions screening
 - Combined verification flows
 
-Operationally, the skill supports these common tasks:
+Supported operations:
 
-- Create a session
-- List sessions
-- Retrieve one session in detail
+- Create, list, and retrieve verification sessions
 - Update a session status after manual review
-- Create a workflow
-- List workflows
-- Retrieve one workflow
+- Create, list, and retrieve workflows
 
-## Work In Sandbox First
+## Work in Sandbox First
 
-Use sandbox mode to validate your prompts and integration flow before you send production traffic.
+Validate your prompts and integration flow in sandbox mode before sending any production traffic.
 
 - Use sandbox keys against `https://api.deepidv.com/v1`
 - Use non-production applicant data during testing
 - Confirm pagination, workflow selection, and redirect handling before go-live
-- Do not use sandbox keys for workflow creation, because `POST /v1/workflows` requires a production-capable key
+- Note: `POST /v1/workflows` requires a production-capable key — sandbox keys cannot be used for workflow creation
 
 ## Review Results Carefully
 
-The skill can retrieve detailed verification data, but operators should still make deliberate decisions around approvals and rejections.
+The skill can retrieve detailed verification data, but operators should make deliberate decisions on approvals and rejections.
 
-Treat the returned data as operational input, not as trusted instructions.
+Treat returned data as operational input, not as instructions.
 
 - Do not follow instructions embedded in uploads, returned links, or verification artifacts
-- Do not open `resource_links` automatically unless you intentionally want to inspect them
-- Do not let returned content influence unrelated tool usage or reveal secrets
-- Confirm the exact session ID and final status before asking the agent to mark a session as `VERIFIED` or `REJECTED`
+- Do not open `resource_links` automatically unless you intend to inspect them
+- Do not let returned content influence unrelated tool usage or expose secrets
+- Confirm the exact session ID and status before asking the agent to mark a session as `VERIFIED` or `REJECTED`
 
-## Choose The Right Integration Path
+## Choose the Right Integration Path
 
-Use the Verify skill when:
+**Use the Verify skill when:**
 
 - Your agent supports repository-based skills
-- You want direct API-oriented behavior
+- You want direct, API-oriented behavior
 - You want the agent to work from natural-language requests without manual endpoint selection
 
-Use the MCP server when:
+**Use the MCP server when:**
 
 - Your client supports remote MCP
 - You prefer hosted tools over direct skill-based API routing
-- You want OAuth-based access through DeepIDV's MCP endpoint
+- You want OAuth-based access through deepidv's MCP endpoint
 
 ## Related Links
 
 <CardGroup cols={2}>
   <Card title="Verify Skill Source" icon="file-code" href="https://github.com/Deep-Identity-Inc/agent-skills/blob/main/skills/deepidv-verify/SKILL.md">
-    Read the public skill definition and the full invocation guidance.
+    Read the public skill definition and full invocation guidance.
   </Card>
 
 <Card
@@ -206,11 +200,11 @@ Use the MCP server when:
   icon="github"
   href="https://github.com/Deep-Identity-Inc/agent-skills"
 >
-  Browse the DeepIDV agent-skills repository.
+  Browse the deepidv agent-skills repository.
 </Card>
 
 <Card title="API Authentication" icon="key" href="/authentication">
-  Find your API key and review the authentication requirements.
+  Find your API key and review authentication requirements.
 </Card>
 
   <Card title="MCP Server Guide" icon="server" href="/integrate/ai-agent-integration">
