@@ -67,7 +67,9 @@ Returns a `VERIFIED` session with every possible field populated. Use this to va
     "status": "VERIFIED",
     "type": "session",
     "session_progress": "COMPLETED",
-    "location": "Canada",
+    "location": {
+      "country": "United States"
+    },
     "workflow_id": "sandbox-workflow-001",
     "bank_statement_request_id": "sandbox-bank-stmt-001",
     "workflow_steps": [
@@ -77,9 +79,21 @@ Returns a `VERIFIED` session with every possible field populated. Use this to va
       "CUSTOM_FORM", "AI_BANK_STATEMENT_ANALYSIS"
     ],
     "meta_data": {
-      "applicant_submission_ip": "192.168.1.1, 10.0.0.1",
-      "applicant_submission_device": "Mac",
-      "applicant_submission_browser": "Chrome"
+      "applicantSubmissionIp": "192.168.1.1, 10.0.0.1",
+      "applicantSubmissionDevice": "Mac",
+      "applicantViewTime": "2025-01-15T10:35:00.000Z",
+      "applicantSubmissionBrowser": "Chrome",
+      "applicantSubmissionLocation": "Illinois, Chicago",
+      "applicantSubmissionLocationDetails": {
+        "accuracyRadius": 500,
+        "continent": "North America",
+        "country": "United States",
+        "countryIsoCode": "US",
+        "latitude": 41.8483,
+        "longitude": -87.6517,
+        "subdivision": "Illinois",
+        "timeZone": "America/Chicago"
+      }
     },
     "uploads": {
       "id_front": true,
