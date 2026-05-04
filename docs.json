@@ -7,7 +7,7 @@
     "light": "#22B8F0",
     "dark": "#1456A0"
   },
-  "favicon": "/favicon.ico",
+  "favicon": "/logo/favicon.svg",
   "css": "/custom.css",
   "navigation": {
     "tabs": [
@@ -142,8 +142,8 @@
     }
   },
   "logo": {
-    "light": "/logo/logo-full-light.png",
-    "dark": "/logo/logo-full-dark.PNG",
+    "light": "/logo/logo-full-black.svg",
+    "dark": "/logo/logo-full-white.svg",
     "height": 40
   },
   "navbar": {
