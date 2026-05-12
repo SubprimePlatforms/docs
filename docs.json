@@ -26,30 +26,19 @@
           },
           {
             "group": "Pricing",
-            "pages": [
-              "pricing"
-            ]
+            "pages": ["pricing"]
           },
           {
             "group": "Workflows & Verification",
-            "pages": [
-              "workflows/workflows",
-              "workflows/verification-links"
-            ]
+            "pages": ["workflows/workflows", "workflows/verification-links"]
           },
           {
             "group": "Webhooks",
-            "pages": [
-              "webhooks/overview",
-              "webhooks/event-object"
-            ]
+            "pages": ["webhooks/overview", "webhooks/event-object"]
           },
           {
             "group": "Review Operations",
-            "pages": [
-              "review/manual-review",
-              "review/export"
-            ]
+            "pages": ["review/manual-review", "review/export"]
           },
           {
             "group": "Settings",
@@ -82,9 +71,7 @@
           },
           {
             "group": "Credit Check",
-            "pages": [
-              "api-reference/credit-check/create-credit-check"
-            ]
+            "pages": ["api-reference/credit-check/create-credit-check"]
           },
           {
             "group": "Financial",
@@ -112,14 +99,22 @@
           },
           {
             "group": "Server-to-Server (Coming Soon!)",
-            "pages": [
-              "api-reference/server-to-server/overview"
-            ]
+            "pages": ["api-reference/server-to-server/overview"]
           },
           {
             "group": "Sandbox",
+            "pages": ["api-reference/sandbox/models"]
+          }
+        ]
+      },
+      {
+        "tab": "Integrate / SDKs",
+        "groups": [
+          {
+            "group": "Guides",
             "pages": [
-              "api-reference/sandbox/models"
+              "integrate/ai-agent-integration",
+              "integrate/verify-skill"
             ]
           }
         ]
@@ -136,6 +131,12 @@
           "anchor": "Admin Console",
           "href": "https://app.deepidv.com",
           "icon": "grid-2",
+          "isExternal": true
+        },
+        {
+          "anchor": "Agent Skills",
+          "href": "https://github.com/Deep-Identity-Inc/agent-skills",
+          "icon": "robot",
           "isExternal": true
         }
       ]
