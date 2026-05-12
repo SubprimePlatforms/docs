@@ -111,7 +111,7 @@
             ]
           },
           {
-            "group": "Server-to-Server (Coming Soon!)",
+            "group": "Server-to-Server",
             "pages": [
               "api-reference/server-to-server/overview"
             ]
