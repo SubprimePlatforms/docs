@@ -111,15 +111,26 @@
             ]
           },
           {
-            "group": "Server-to-Server (Coming Soon!)",
+            "group": "Server-to-Server",
             "pages": [
-              "api-reference/server-to-server/overview"
+              "api-reference/server-to-server/overview",
+              "api-reference/server-to-server/document-scan",
+              "api-reference/server-to-server/face-detect",
+              "api-reference/server-to-server/face-compare",
+              "api-reference/server-to-server/face-estimate-age",
+              "api-reference/server-to-server/identity-verify"
             ]
           },
           {
             "group": "Sandbox",
             "pages": [
               "api-reference/sandbox/models"
+            ]
+          },
+          {
+            "group": "OpenAPI Specification",
+            "pages": [
+              "api-reference/openapi-spec"
             ]
           }
         ]

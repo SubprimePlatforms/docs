@@ -1,0 +1,128 @@
+---
+title: Estimate Age
+description: Estimate the age range and gender from a single face image
+api: POST /v1/face/estimate-age
+---
+
+```
+POST /v1/face/estimate-age
+```
+
+Submit a single image containing a face. The response returns an age range, a single integer estimate within the range, and a gender estimate with confidence.
+
+Use this when you need to gate an experience by approximate age — for example, age-restricted product access — without requiring a full ID scan.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description                                 |
+| -------------- | -------- | ------------------------------------------- |
+| `x-api-key`    | Yes      | Your API key                                |
+| `Content-Type` | Yes      | `multipart/form-data` or `application/json` |
+
+### Body parameters
+
+| Parameter | Type             | Required | Description                                                                              |
+| --------- | ---------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `image`   | binary \| string | Yes      | The image. For multipart, the file part. For JSON, a base64, base64url, or S3-key string. |
+
+See the [overview](/api-reference/server-to-server/overview#image-inputs) for the shared image rules.
+
+### Example request
+
+<CodeGroup>
+```bash cURL (multipart)
+curl -X POST https://api.deepidv.com/v1/face/estimate-age \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@selfie.jpg"
+```
+
+```bash cURL (JSON)
+curl -X POST https://api.deepidv.com/v1/face/estimate-age \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "uploads/selfie-abc123.jpg" }'
+```
+
+```javascript Node.js
+import fs from "node:fs";
+
+const form = new FormData();
+form.append("image", new Blob([fs.readFileSync("selfie.jpg")]), "selfie.jpg");
+
+const response = await fetch("https://api.deepidv.com/v1/face/estimate-age", {
+  method: "POST",
+  headers: { "x-api-key": "YOUR_API_KEY" },
+  body: form,
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+with open("selfie.jpg", "rb") as f:
+    response = requests.post(
+        "https://api.deepidv.com/v1/face/estimate-age",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"image": f},
+    )
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field              | Type             | Description                                                          |
+| ------------------ | ---------------- | -------------------------------------------------------------------- |
+| `faceDetected`     | boolean          | True when a face was detected                                        |
+| `estimatedAge`     | integer          | Single age estimate (midpoint of the range). Omitted if no face      |
+| `ageRange`         | object           | `{ low, high }` integer age band. Omitted if no face                 |
+| `gender`           | string           | `male` or `female`. Omitted if no face                               |
+| `genderConfidence` | number (0–1)     | Confidence of the gender classification. Omitted if no face          |
+
+### Error responses
+
+| Status | Description                                                                  |
+| ------ | ---------------------------------------------------------------------------- |
+| `400`  | Invalid body, unsupported image format, or image larger than 15 MB           |
+| `401`  | Missing or invalid `x-api-key`                                               |
+| `402`  | Insufficient token balance                                                   |
+| `403`  | The supplied `image` S3 key is not readable by this organization             |
+| `429`  | Rate limit exceeded                                                          |
+| `500`  | Unexpected server error — safe to retry with backoff                         |
+
+<ResponseExample>
+```json 200 — face found
+{
+  "faceDetected": true,
+  "estimatedAge": 34,
+  "ageRange": { "low": 28, "high": 40 },
+  "gender": "female",
+  "genderConfidence": 0.97
+}
+```
+
+```json 200 — no face
+{
+  "faceDetected": false
+}
+```
+</ResponseExample>
+
+## Interpreting the range
+
+The returned range is broad by design — Rekognition estimates an age band, not a single value. A common pattern is:
+
+- If `ageRange.low >= your_minimum_age`, accept immediately.
+- If `ageRange.high < your_minimum_age`, reject immediately.
+- Otherwise the user falls in the ambiguous band — fall back to a full ID-based verification via [`/v1/document/scan`](/api-reference/server-to-server/document-scan) or [`/v1/identity/verify`](/api-reference/server-to-server/identity-verify).
+
+<Info>
+  Age estimation is probabilistic and should not be used as a sole signal for
+  regulated age checks (alcohol, tobacco, gambling). Combine it with an ID
+  scan when compliance matters.
+</Info>

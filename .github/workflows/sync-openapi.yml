@@ -1,0 +1,69 @@
+name: Sync openapi.yaml from deepidv-open-api
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SOURCE_REPO: Deep-Identity-Inc/deepidv-open-api
+  SOURCE_REF: main
+  SOURCE_PATH: infrastructure/ec2/open-api/openapi.yaml
+  TARGET_PATH: api-reference/openapi.yaml
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repo (dev branch)
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Fetch openapi.yaml from open-api
+        env:
+          PAT: ${{ secrets.OPENAPI_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PAT:-}" ]; then
+            echo "::error::OPENAPI_SYNC_TOKEN secret is not configured on this repo."
+            exit 1
+          fi
+          mkdir -p "$(dirname "$TARGET_PATH")"
+          http_status=$(curl --silent --show-error --write-out '%{http_code}' --output "$TARGET_PATH.new" \
+            -H "Authorization: Bearer $PAT" \
+            -H "Accept: application/vnd.github.raw" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$SOURCE_REPO/contents/$SOURCE_PATH?ref=$SOURCE_REF")
+          if [ "$http_status" != "200" ]; then
+            echo "::error::Failed to fetch openapi.yaml — HTTP $http_status"
+            echo "Response body:"
+            cat "$TARGET_PATH.new"
+            exit 1
+          fi
+          mv "$TARGET_PATH.new" "$TARGET_PATH"
+          echo "Fetched $(wc -c < "$TARGET_PATH") bytes into $TARGET_PATH"
+
+      - name: Open PR if openapi.yaml changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: sync/openapi
+          base: dev
+          add-paths: ${{ env.TARGET_PATH }}
+          commit-message: "chore(openapi): sync openapi.yaml from deepidv-open-api"
+          title: "Sync openapi.yaml from deepidv-open-api"
+          body: |
+            Automated sync of `openapi.yaml` from
+            [`${{ env.SOURCE_REPO }}`](https://github.com/${{ env.SOURCE_REPO }}/blob/${{ env.SOURCE_REF }}/${{ env.SOURCE_PATH }})
+            on `${{ env.SOURCE_REF }}`.
+
+            Review the contract diff before merging. Empty PRs mean the spec is unchanged
+            since the last sync (the action will not open a PR in that case).
+          labels: |
+            automated
+            openapi
+          delete-branch: true

@@ -1,0 +1,138 @@
+---
+title: Scan Document
+description: Extract fields from a government-issued ID and run authenticity checks
+api: POST /v1/document/scan
+---
+
+```
+POST /v1/document/scan
+```
+
+Submit a single image of a government-issued ID. The response contains the extracted text fields (name, date of birth, document number, address, expiry, etc.), a normalized `documentType`, and an average extraction confidence score.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description                                                         |
+| -------------- | -------- | ------------------------------------------------------------------- |
+| `x-api-key`    | Yes      | Your API key                                                        |
+| `Content-Type` | Yes      | `multipart/form-data` or `application/json`                         |
+
+### Body parameters
+
+The endpoint accepts the image either as raw multipart bytes or as a JSON string (base64, base64url, or an S3 key from an earlier presigned upload). See the [overview](/api-reference/server-to-server/overview#image-inputs) for the shared image rules — accepted formats, the 15 MB limit, and when to prefer one over the other.
+
+| Parameter      | Type   | Required | Description                                                                                                |
+| -------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `image`        | binary \| string | Yes | The image. For multipart, the file part. For JSON, a base64, base64url, or S3-key string. |
+| `documentType` | string | No       | One of `passport`, `drivers_license`, `national_id`, `auto`. Defaults to `auto`.                           |
+
+### Example request
+
+<CodeGroup>
+```bash cURL (multipart)
+curl -X POST https://api.deepidv.com/v1/document/scan \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@/path/to/id.jpg" \
+  -F "documentType=drivers_license"
+```
+
+```bash cURL (JSON)
+curl -X POST https://api.deepidv.com/v1/document/scan \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "uploads/abc123-driver-license.jpg",
+    "documentType": "drivers_license"
+  }'
+```
+
+```javascript Node.js
+import fs from "node:fs";
+
+const form = new FormData();
+form.append("image", new Blob([fs.readFileSync("/path/to/id.jpg")]), "id.jpg");
+form.append("documentType", "drivers_license");
+
+const response = await fetch("https://api.deepidv.com/v1/document/scan", {
+  method: "POST",
+  headers: { "x-api-key": "YOUR_API_KEY" },
+  body: form,
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+with open("/path/to/id.jpg", "rb") as f:
+    response = requests.post(
+        "https://api.deepidv.com/v1/document/scan",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"image": f},
+        data={"documentType": "drivers_license"},
+    )
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field            | Type             | Description                                                       |
+| ---------------- | ---------------- | ----------------------------------------------------------------- |
+| `documentType`   | string           | Normalized document type extracted from the image                 |
+| `fullName`       | string           | Full name as printed on the document                              |
+| `firstName`      | string           | First / given name                                                |
+| `lastName`       | string           | Last / family name                                                |
+| `dateOfBirth`    | string           | Date of birth as printed on the document                          |
+| `gender`         | string           | Gender as printed on the document                                 |
+| `nationality`    | string           | Nationality as printed on the document                            |
+| `documentNumber` | string           | Document number                                                   |
+| `expirationDate` | string           | Document expiration date                                          |
+| `issuingCountry` | string           | Issuing country                                                   |
+| `address`        | string           | Address as printed on the document (when present)                 |
+| `mrzData`        | string           | Machine-readable zone, raw (passports / some IDs)                 |
+| `rawFields`      | object           | All fields returned by AWS Textract, keyed by Textract field name |
+| `confidence`     | number (0–1)     | Average extraction confidence across all detected fields          |
+
+### Error responses
+
+| Status | Description                                                                  |
+| ------ | ---------------------------------------------------------------------------- |
+| `400`  | Invalid body, unsupported image format, or image larger than 15 MB           |
+| `401`  | Missing or invalid `x-api-key`                                               |
+| `402`  | Insufficient token balance                                                   |
+| `403`  | The supplied `image` S3 key is not readable by this organization             |
+| `429`  | Rate limit exceeded                                                          |
+| `500`  | Unexpected server error — safe to retry with backoff                         |
+
+<ResponseExample>
+```json 200
+{
+  "documentType": "drivers_license",
+  "fullName": "JANE Q PUBLIC",
+  "firstName": "JANE",
+  "lastName": "PUBLIC",
+  "dateOfBirth": "1990-04-12",
+  "gender": "F",
+  "nationality": "USA",
+  "documentNumber": "D1234567",
+  "expirationDate": "2030-04-12",
+  "issuingCountry": "USA",
+  "address": "123 MAIN ST, SPRINGFIELD, IL 62701",
+  "rawFields": {
+    "FIRST_NAME": "JANE",
+    "LAST_NAME": "PUBLIC",
+    "DATE_OF_BIRTH": "04/12/1990"
+  },
+  "confidence": 0.97
+}
+```
+</ResponseExample>
+
+## When to use `/v1/identity/verify` instead
+
+If you also have a selfie and want a single round-trip that runs document scan + face detect + face compare in parallel, call [`/v1/identity/verify`](/api-reference/server-to-server/identity-verify) instead — it returns one aggregated payload with an `overallConfidence` score.
