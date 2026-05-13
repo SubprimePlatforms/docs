@@ -1,0 +1,126 @@
+---
+title: Compare Faces
+description: Compare two faces and return a similarity score
+api: POST /v1/face/compare
+---
+
+```
+POST /v1/face/compare
+```
+
+Submit two images and receive a similarity score plus a boolean `isMatch` decision. Typical use: comparing a selfie to the photo on a scanned ID.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description                                 |
+| -------------- | -------- | ------------------------------------------- |
+| `x-api-key`    | Yes      | Your API key                                |
+| `Content-Type` | Yes      | `multipart/form-data` or `application/json` |
+
+### Body parameters
+
+| Parameter | Type             | Required | Description                                                                              |
+| --------- | ---------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `source`  | binary \| string | Yes      | The first image. For multipart, the file part. For JSON, a base64, base64url, or S3-key string. |
+| `target`  | binary \| string | Yes      | The second image. Same input rules as `source`.                                          |
+
+You can mix input modes within a single call — for example, send `source` as raw multipart bytes and `target` as a JSON S3 key in a multipart body. See the [overview](/api-reference/server-to-server/overview#image-inputs) for the shared image rules.
+
+### Example request
+
+<CodeGroup>
+```bash cURL (multipart)
+curl -X POST https://api.deepidv.com/v1/face/compare \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "source=@id-photo.jpg" \
+  -F "target=@selfie.jpg"
+```
+
+```bash cURL (JSON)
+curl -X POST https://api.deepidv.com/v1/face/compare \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "uploads/id-photo-abc.jpg",
+    "target": "uploads/selfie-xyz.jpg"
+  }'
+```
+
+```javascript Node.js
+import fs from "node:fs";
+
+const form = new FormData();
+form.append("source", new Blob([fs.readFileSync("id-photo.jpg")]), "source.jpg");
+form.append("target", new Blob([fs.readFileSync("selfie.jpg")]), "target.jpg");
+
+const response = await fetch("https://api.deepidv.com/v1/face/compare", {
+  method: "POST",
+  headers: { "x-api-key": "YOUR_API_KEY" },
+  body: form,
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+with open("id-photo.jpg", "rb") as src, open("selfie.jpg", "rb") as tgt:
+    response = requests.post(
+        "https://api.deepidv.com/v1/face/compare",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"source": src, "target": tgt},
+    )
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field                | Type    | Description                                                                |
+| -------------------- | ------- | -------------------------------------------------------------------------- |
+| `isMatch`            | boolean | True when `confidence >= threshold`                                        |
+| `confidence`         | number  | Raw similarity score from AWS Rekognition, **0–100** (not normalized)      |
+| `threshold`          | number  | Server-side similarity threshold used for `isMatch`, **0–100**             |
+| `sourceFaceDetected` | boolean | True when a face was detected in `source`                                  |
+| `targetFaceDetected` | boolean | True when a face was detected in `target`                                  |
+
+### Error responses
+
+| Status | Description                                                                  |
+| ------ | ---------------------------------------------------------------------------- |
+| `400`  | Invalid body, unsupported image format, or image larger than 15 MB           |
+| `401`  | Missing or invalid `x-api-key`                                               |
+| `402`  | Insufficient token balance                                                   |
+| `403`  | A supplied `source`/`target` S3 key is not readable by this organization    |
+| `429`  | Rate limit exceeded                                                          |
+| `500`  | Unexpected server error — safe to retry with backoff                         |
+
+<ResponseExample>
+```json 200 — match
+{
+  "isMatch": true,
+  "confidence": 96.4,
+  "threshold": 80,
+  "sourceFaceDetected": true,
+  "targetFaceDetected": true
+}
+```
+
+```json 200 — no face in target
+{
+  "isMatch": false,
+  "confidence": 0,
+  "threshold": 80,
+  "sourceFaceDetected": true,
+  "targetFaceDetected": false
+}
+```
+</ResponseExample>
+
+## When neither face is found
+
+If Rekognition rejects the request because one or both images contain no usable face, the endpoint returns `200 OK` with `isMatch: false` and `confidence: 0`. Inspect the two `*FaceDetected` booleans to find which side failed. The response cannot distinguish "two faces, no match" from "no face found" — if you need that distinction, call [`/v1/face/detect`](/api-reference/server-to-server/face-detect) on each image first.
