@@ -110,6 +110,26 @@ with open("id-photo.jpg", "rb") as src, open("selfie.jpg", "rb") as tgt:
 }
 ```
 
+```json 200 — both faces present, similarity below threshold
+{
+  "isMatch": false,
+  "confidence": 62.1,
+  "threshold": 80,
+  "sourceFaceDetected": true,
+  "targetFaceDetected": true
+}
+```
+
+```json 200 — no face in source
+{
+  "isMatch": false,
+  "confidence": 0,
+  "threshold": 80,
+  "sourceFaceDetected": false,
+  "targetFaceDetected": true
+}
+```
+
 ```json 200 — no face in target
 {
   "isMatch": false,
@@ -121,6 +141,15 @@ with open("id-photo.jpg", "rb") as src, open("selfie.jpg", "rb") as tgt:
 ```
 </ResponseExample>
 
-## When neither face is found
+## Telling failure modes apart
 
-If Rekognition rejects the request because one or both images contain no usable face, the endpoint returns `200 OK` with `isMatch: false` and `confidence: 0`. Inspect the two `*FaceDetected` booleans to find which side failed. The response cannot distinguish "two faces, no match" from "no face found" — if you need that distinction, call [`/v1/face/detect`](/api-reference/server-to-server/face-detect) on each image first.
+The response shape lets you distinguish three distinct `isMatch: false` outcomes without a second API call:
+
+| Outcome                              | `confidence` | `sourceFaceDetected` | `targetFaceDetected` |
+| ------------------------------------ | ------------ | -------------------- | -------------------- |
+| Both faces found, similarity too low | `> 0`        | `true`               | `true`               |
+| No face in source                    | `0`          | `false`              | `true`/`false`       |
+| No face in target                    | `0`          | `true`               | `false`              |
+| No face in either image              | `0`          | `false`              | `false`              |
+
+Surface a "retake your selfie" prompt when `sourceFaceDetected` is `false`, a "retake the ID photo" prompt when `targetFaceDetected` is `false`, and a "doesn't match" outcome when both booleans are `true` but `isMatch` is `false`.

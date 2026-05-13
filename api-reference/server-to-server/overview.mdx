@@ -43,18 +43,25 @@ curl -X POST https://api.deepidv.com/v1/face/detect \
 
 Supported content types: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`. Max size: 15 MB per image. The content type is detected from the file's magic bytes, not the `Content-Type` header — mislabelled files are still accepted as long as the bytes match a supported format.
 
-### Option 2 — `application/json` with a presigned `fileKey`
+### Option 2 — `application/json` with a presigned `fileKey`, base64, or base64url string
 
-If your image is already in deepidv-managed storage (for example, uploaded during an earlier session or via the upload endpoint), reference it by its `fileKey` instead of re-sending bytes.
+If your image is already in deepidv-managed storage (for example, uploaded during an earlier session or via the upload endpoint), reference it by its `fileKey`. You can also send the image inline as a base64 or base64url-encoded string. In all three cases the value is a **bare string**:
 
-```bash cURL
+```bash cURL — S3 key
 curl -X POST https://api.deepidv.com/v1/face/detect \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "image": { "type": "key", "value": "uploads/abc123..." } }'
+  -d '{ "image": "uploads/abc123-selfie.jpg" }'
 ```
 
-This is the recommended pattern for high-throughput pipelines — it avoids re-uploading bytes on each call.
+```bash cURL — base64
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "iVBORw0KGgoAAAANSUhEUgAA..." }'
+```
+
+The server detects which form you sent by inspecting the string (valid base64 → base64; valid base64url → base64url; otherwise → S3 key). Re-using an existing `fileKey` is the recommended pattern for high-throughput pipelines since it avoids re-uploading bytes on each call.
 
 ## Response shape
 
