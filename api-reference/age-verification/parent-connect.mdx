@@ -1,0 +1,207 @@
+---
+title: Parent Connect
+description: Initiate parental consent flow with platform-defined boundary controls
+api: POST /v1/age-verification/parent-connect
+---
+
+```
+POST /v1/age-verification/parent-connect
+```
+
+Initiates a Parent Connect flow where a parent or guardian verifies their identity and sets boundary controls on behalf of a minor. The platform defines what boundaries are available via `boundary_options`.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
+
+### Body parameters
+
+| Parameter            | Alias               | Type    | Required | Description                                                          |
+| -------------------- | ------------------- | ------- | -------- | -------------------------------------------------------------------- |
+| `first_name`         | `firstName`         | string  | Yes      | Child's first name                                                   |
+| `last_name`          | `lastName`          | string  | Yes      | Child's last name                                                    |
+| `email`              | ---                 | string  | Yes      | Child's email address                                                |
+| `phone`              | ---                 | string  | Yes      | Child's phone in E.164 format                                        |
+| `parent_connect`     | `parentConnect`     | boolean | Yes      | Must be `true`                                                       |
+| `age_band`           | `ageBand`           | string  | No       | Age band (e.g. `"13-17"`). Defaults to `"13-17"`                     |
+| `boundary_options`   | `boundaryOptions`   | object  | No       | Platform-defined boundary configuration (see below)                  |
+| `external_id`        | `externalId`        | string  | No       | Your internal reference ID                                           |
+
+### `boundary_options` object
+
+| Field                  | Type   | Description                                               |
+| ---------------------- | ------ | --------------------------------------------------------- |
+| `eula_acceptance`      | object | `{ required: boolean, eula_url: string }` EULA config     |
+| `feature_restrictions` | array  | Feature boundary options the parent can toggle             |
+| `content_restrictions` | array  | Content boundary options the parent can toggle             |
+
+Each restriction in the arrays follows this schema:
+
+| Field      | Type    | Required | Description                                             |
+| ---------- | ------- | -------- | ------------------------------------------------------- |
+| `key`      | string  | Yes      | Unique identifier for this boundary                     |
+| `label`    | string  | Yes      | Human-readable label shown to the parent                |
+| `type`     | string  | Yes      | `toggle`, `number`, `minutes`, or `select`              |
+| `default`  | any     | No       | Default value                                           |
+| `required` | boolean | No       | If `true`, parent must set this boundary                |
+| `min`      | number  | No       | Minimum value (for `number` and `minutes`)              |
+| `max`      | number  | No       | Maximum value (for `number` and `minutes`)              |
+| `options`  | array   | No       | Allowed values (for `select`)                           |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/age-verification/parent-connect \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "first_name": "Alex",
+    "last_name": "Johnson",
+    "email": "alex@example.com",
+    "phone": "+15192223333",
+    "parent_connect": true,
+    "age_band": "13-17",
+    "boundary_options": {
+      "eula_acceptance": {
+        "required": true,
+        "eula_url": "https://yourapp.com/terms"
+      },
+      "feature_restrictions": [
+        { "key": "in_game_purchases", "label": "In-Game Purchases", "type": "toggle", "default": false },
+        { "key": "voice_chat", "label": "Voice Chat", "type": "toggle", "default": false },
+        { "key": "daily_time_limit", "label": "Daily Time Limit", "type": "minutes", "default": 60, "min": 15, "max": 480 }
+      ],
+      "content_restrictions": [
+        { "key": "mature_content", "label": "Mature Content", "type": "toggle", "default": false }
+      ]
+    }
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.deepidv.com/v1/age-verification/parent-connect", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "YOUR_API_KEY",
+  },
+  body: JSON.stringify({
+    first_name: "Alex",
+    last_name: "Johnson",
+    email: "alex@example.com",
+    phone: "+15192223333",
+    parent_connect: true,
+    age_band: "13-17",
+    boundary_options: {
+      eula_acceptance: { required: true, eula_url: "https://yourapp.com/terms" },
+      feature_restrictions: [
+        { key: "in_game_purchases", label: "In-Game Purchases", type: "toggle", default: false },
+        { key: "voice_chat", label: "Voice Chat", type: "toggle", default: false },
+        { key: "daily_time_limit", label: "Daily Time Limit", type: "minutes", default: 60, min: 15, max: 480 },
+      ],
+      content_restrictions: [
+        { key: "mature_content", label: "Mature Content", type: "toggle", default: false },
+      ],
+    },
+  }),
+});
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.deepidv.com/v1/age-verification/parent-connect",
+    headers={"x-api-key": "YOUR_API_KEY"},
+    json={
+        "first_name": "Alex",
+        "last_name": "Johnson",
+        "email": "alex@example.com",
+        "phone": "+15192223333",
+        "parent_connect": True,
+        "age_band": "13-17",
+        "boundary_options": {
+            "eula_acceptance": {"required": True, "eula_url": "https://yourapp.com/terms"},
+            "feature_restrictions": [
+                {"key": "in_game_purchases", "label": "In-Game Purchases", "type": "toggle", "default": False},
+            ],
+            "content_restrictions": [
+                {"key": "mature_content", "label": "Mature Content", "type": "toggle", "default": False},
+            ],
+        },
+    },
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 --- Success
+
+| Field                    | Type   | Description                                              |
+| ------------------------ | ------ | -------------------------------------------------------- |
+| `parent_connect_id`      | string | Unique ID for this Parent Connect flow                   |
+| `child_session_id`       | string | The child's verification session ID                      |
+| `status`                 | string | `PENDING`                                                |
+| `age_band`               | string | Age band (e.g. `"13-17"`)                                |
+| `boundary_options`       | object | Echoed back with feature/content grouping                |
+| `consent_expires_at`     | string | When the consent will expire (180 days)                  |
+| `session_url`            | string | URL for the child's age verification session             |
+| `parent_verification_url`| string | `null` until invite is sent                              |
+| `links`                  | array  | HATEOAS links for next actions                           |
+
+### Error responses
+
+| Status | Description                              |
+| ------ | ---------------------------------------- |
+| `400`  | Invalid body or `parent_connect !== true`|
+| `401`  | Missing or invalid `x-api-key`           |
+| `402`  | Insufficient token balance               |
+
+<ResponseExample>
+```json 200
+{
+  "parent_connect_id": "pc_a1b2c3d4e5f67890",
+  "child_session_id": "f1e2d3c4-b5a6-7890-abcd-ef1234567890",
+  "status": "PENDING",
+  "age_band": "13-17",
+  "boundary_options": {
+    "feature_restrictions": [
+      { "key": "in_game_purchases", "label": "In-Game Purchases", "type": "toggle", "default": false, "category": "feature" }
+    ],
+    "content_restrictions": [
+      { "key": "mature_content", "label": "Mature Content", "type": "toggle", "default": false, "category": "content" }
+    ],
+    "eula_acceptance": { "required": true, "eula_url": "https://yourapp.com/terms" }
+  },
+  "consent_expires_at": "2026-11-10T11:00:00.000Z",
+  "session_url": "https://verify.deepidv.com/age/f1e2d3c4-...",
+  "parent_verification_url": null,
+  "links": [
+    { "rel": "invite_parent", "href": "https://api.deepidv.com/v1/age-verification/parent-connect/pc_a1b2.../invite" },
+    { "rel": "status", "href": "https://api.deepidv.com/v1/age-verification/parent-connect/pc_a1b2..." }
+  ]
+}
+```
+</ResponseExample>
+
+## Next steps
+
+After creating a Parent Connect request:
+
+1. **Invite the parent** --- `POST /v1/age-verification/parent-connect/{id}/invite` with the parent's phone number or email
+2. **Poll for status** --- `GET /v1/age-verification/parent-connect/{id}` returns the current status and, once consent is given, the `child_attestation_id`
+3. **Submit consent** --- `POST /v1/age-verification/parent-connect/{id}/consent` (called by the parent after verification)
+4. **Query boundaries** --- `GET /v1/age-verification/parent-connect/boundaries/{attestation_id}` to look up the current boundary settings
+
+<Info>
+  The parent can update boundaries at any time after consent via
+  `PUT /v1/age-verification/parent-connect/boundaries/{attestation_id}`.
+  No re-verification is required.
+</Info>

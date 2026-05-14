@@ -1,0 +1,137 @@
+---
+title: Get Regulations
+description: Look up age verification regulatory config by country code
+api: GET /v1/regulations/{country_code}
+---
+
+```
+GET /v1/regulations/{country_code}
+```
+
+Returns the age verification regulatory configuration for a given country, including consent ages, allowed/banned verification methods, enforcement status, and applicable legislation.
+
+Use `GET /v1/regulations` (no country code) to list all 101+ mapped jurisdictions.
+
+## Request
+
+### Headers
+
+| Header      | Required | Description  |
+| ----------- | -------- | ------------ |
+| `x-api-key` | Yes      | Your API key |
+
+### Path parameters
+
+| Parameter      | Type   | Required | Description                                     |
+| -------------- | ------ | -------- | ----------------------------------------------- |
+| `country_code` | string | Yes      | ISO 3166-1 alpha-2 code (e.g. `GB`, `US`, `AU`) |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl https://api.deepidv.com/v1/regulations/GB \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch("https://api.deepidv.com/v1/regulations/GB", {
+  headers: { "x-api-key": "YOUR_API_KEY" },
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/regulations/GB",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 --- Success
+
+| Field                       | Type    | Description                                                     |
+| --------------------------- | ------- | --------------------------------------------------------------- |
+| `country_code`              | string  | ISO country code                                                |
+| `country_name`              | string  | Human-readable country name                                     |
+| `region`                    | string  | Geographic region                                               |
+| `tier`                      | string  | `P0` (active enforcement), `P1`, `P2` (proposed), `P3` (limited)|
+| `default_consent_age`       | integer | Default digital consent age                                     |
+| `consent_ages`              | object  | Category-specific ages (see below)                              |
+| `legislation`               | array   | Primary legislation references                                  |
+| `regulator`                 | string  | Regulatory body name                                            |
+| `enforcement_status`        | string  | `active`, `pending`, `proposed`, `limited`, or `none`           |
+| `allowed_methods`           | array   | Permitted verification methods                                  |
+| `banned_methods`            | array   | Prohibited methods (e.g. France bans `face-recognition`)        |
+| `parental_consent_required` | boolean | Whether parental consent is needed for minors                   |
+| `parental_consent_age`      | integer | Age below which parental consent is required                    |
+| `outright_ban`              | boolean | Whether minors are banned entirely (no consent option)          |
+| `max_penalty`               | string  | Maximum regulatory penalty                                      |
+| `notes`                     | string  | Additional regulatory context                                   |
+
+### `consent_ages` object
+
+| Field             | Type           | Description                                           |
+| ----------------- | -------------- | ----------------------------------------------------- |
+| `general`         | integer        | General digital consent age                           |
+| `social_media`    | integer        | Social media minimum age                              |
+| `gaming`          | integer        | Online gaming / gambling age                          |
+| `adult_content`   | integer        | Adult content access age                              |
+| `alcohol_tobacco` | integer/object | Alcohol/tobacco age (may be `{ beer: 16, spirits: 18 }`) |
+
+### Error responses
+
+| Status | Description                                  |
+| ------ | -------------------------------------------- |
+| `401`  | Missing or invalid `x-api-key`               |
+| `404`  | No regulatory data for the given country code|
+
+<ResponseExample>
+```json 200 --- United Kingdom
+{
+  "country_code": "GB",
+  "country_name": "United Kingdom",
+  "region": "Europe",
+  "tier": "P0",
+  "default_consent_age": 13,
+  "consent_ages": {
+    "general": 13,
+    "social_media": 13,
+    "gaming": 18,
+    "adult_content": 18,
+    "alcohol_tobacco": 18
+  },
+  "legislation": [
+    "Online Safety Act 2023 (OSA)",
+    "Age Appropriate Design Code (AADC)",
+    "Gambling Act 2005"
+  ],
+  "regulator": "Ofcom",
+  "enforcement_status": "active",
+  "allowed_methods": ["id-verification", "age-estimation", "credit-card", "open-banking", "mobile-operator", "digital-id-wallet"],
+  "banned_methods": [],
+  "parental_consent_required": true,
+  "parental_consent_age": 13,
+  "outright_ban": false,
+  "max_penalty": "10% global turnover",
+  "notes": "OSA requires 'highly effective' age verification. Active enforcement since Jul 2025."
+}
+```
+
+```json 200 --- List all (GET /v1/regulations)
+{
+  "total": 102,
+  "jurisdictions": [
+    { "country_code": "GB", "country_name": "United Kingdom", "region": "Europe", "tier": "P0", "default_consent_age": 13, "enforcement_status": "active", "parental_consent_required": true, "outright_ban": false },
+    { "country_code": "AU", "country_name": "Australia", "region": "Oceania", "tier": "P0", "default_consent_age": 16, "enforcement_status": "active", "parental_consent_required": false, "outright_ban": true },
+    "..."
+  ]
+}
+```
+</ResponseExample>
