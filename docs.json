@@ -38,6 +38,12 @@
             ]
           },
           {
+            "group": "Age Verification",
+            "pages": [
+              "age-verification/overview"
+            ]
+          },
+          {
             "group": "Webhooks",
             "pages": [
               "webhooks/overview",
@@ -108,6 +114,15 @@
               "api-reference/silent-screening/pep-sanctions",
               "api-reference/silent-screening/adverse-media",
               "api-reference/silent-screening/title-check"
+            ]
+          },
+          {
+            "group": "Age Verification",
+            "pages": [
+              "api-reference/age-verification/create-age-verification",
+              "api-reference/age-verification/parent-connect",
+              "api-reference/age-verification/get-regulations",
+              "api-reference/age-verification/get-boundaries"
             ]
           },
           {
