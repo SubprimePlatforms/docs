@@ -1,0 +1,89 @@
+---
+title: SDKs
+description: Officially supported Node.js and Python SDKs for the chain layer
+---
+
+> Two officially supported SDKs at v1 launch. Both produce **byte-identical** cryptographic results against the same proof bundle — verified by cross-language parity tests in CI.
+
+## Node.js / TypeScript
+
+Package: [`@deepidv/chain`](https://www.npmjs.com/package/@deepidv/chain) on npm.
+
+```bash
+npm install @deepidv/chain
+```
+
+```ts
+import { createClient, verifyBundle } from "@deepidv/chain";
+
+// Read public registry data
+const client = createClient({
+  apiUrl: "https://api.deepidv.com",
+});
+const attestation = await client.getAttestation("att_01HZ8...");
+console.log(attestation.envelope_hash);
+
+// Verify a downloaded bundle
+import { readFile } from "node:fs/promises";
+const bundleBytes = await readFile("./attestation.dpiv");
+const result = verifyBundle(bundleBytes);
+if (result.ok) {
+  console.log("Bundle verified.");
+} else {
+  console.error("Verification failed:", result.checks);
+}
+```
+
+The Node SDK:
+
+- Has **zero runtime dependencies** (uses `node:crypto` and global `fetch`)
+- Ships as **dual ESM + CJS**
+- Requires **Node 20+**
+- **Skips RFC 3161 TSA verification** (returns `skipped`, not `verified`) — use `verify.sh` from the bundle for full TSA validation
+
+## Python
+
+Package: [`deepidv-chain`](https://pypi.org/project/deepidv-chain/) on PyPI.
+
+```bash
+pip install deepidv-chain
+```
+
+```python
+from deepidv_chain import Client, verify_bundle
+
+# Sync client
+client = Client(api_url="https://api.deepidv.com")
+attestation = client.get_attestation("att_01HZ8...")
+print(attestation.envelope_hash)
+
+# Verify a bundle
+with open("./attestation.dpiv", "rb") as f:
+    bundle_bytes = f.read()
+result = verify_bundle(bundle_bytes)
+if result.ok:
+    print("Bundle verified.")
+else:
+    print(f"Verification failed: {result.checks}")
+```
+
+An async variant is also available:
+
+```python
+from deepidv_chain import AsyncClient
+
+async with AsyncClient(api_url="https://api.deepidv.com") as client:
+    async for event in client.stream_attestations():
+        print(event.attestation_id)
+```
+
+The Python SDK:
+
+- Supports **Python 3.9 through 3.13**
+- Sync and async clients with matching API surface
+- **Pydantic v2** for wire-validated types
+- Same TSA skip behavior as the Node SDK
+
+## Cross-language parity
+
+Every cryptographic primitive in both SDKs — JCS canonicalization, envelope hashing, STH hashing, manifest computation — is tested against pinned constants from shared fixtures. The Node SDK and Python SDK produce byte-identical outputs against the same envelopes, on every supported runtime version.

@@ -1,0 +1,58 @@
+---
+title: The Governance Console
+description: SSO-gated operational control plane for the chain layer
+---
+
+> The governance console at [proof.deepidv.com/governance](https://proof.deepidv.com/governance) is the operational control plane for the chain layer. Access is restricted via single-sign-on.
+
+## Who has access
+
+The console is for authorized deepidv personnel and named compliance officers at enterprise tenants. There are three roles:
+
+- **Observer.** Read-only view of all chain layer state. Can see segments, STHs, anchor history, alarm states. Cannot make changes.
+- **Operator.** Observer plus the ability to invoke operational controls (anchor pause/resume, force-close a segment) with full audit trail.
+- **Auditor.** Read-only access to the append-only governance log. Used by external auditors and regulators.
+
+All console actions are logged to `chain-governance-log`, an append-only DynamoDB table. Writes use `PutItem` only — no updates, no deletes. Every action is attributed to a specific authenticated principal with a mandatory reason field.
+
+## Anchor controls
+
+Three operational controls govern the on-chain anchoring pipeline.
+
+### Anchor pause
+
+Halts on-chain broadcasting. New attestations continue to mint and STHs continue to sign, but the broadcast step is paused. The pause persists until manually resumed. Used for emergencies — suspected key compromise, suspected contract bug, operational maintenance.
+
+**To pause:** Governance → Anchor → Pause → enter a reason → confirm. Slack `#chain-alerts` notification fires immediately.
+
+**To resume:** Same path → Resume. Queued STHs broadcast in order on resume.
+
+### Anchor mode toggle
+
+Sets the default `anchor` field on new attestations when issuers don't specify. Three modes:
+
+| Mode | Behavior |
+|---|---|
+| `offchain` | STH anchored hourly (default). Per-attestation envelope hashes are not broadcast individually. |
+| `dual` | STH anchored hourly **and** envelope hashes broadcast in per-segment batches. |
+| `onchain` | Every individual attestation broadcasts its envelope hash on-chain. Higher cost; not exposed as a public pricing tier in v1. |
+
+### Force-close segment
+
+Closes the named segment immediately, emits a final STH, and starts a new segment. Used in emergencies — suspected segment-level integrity issue, planned operational cutover, or clean-room replacement.
+
+<Warning>
+Force-close is **irreversible**. The endpoint requires explicit confirmation plus a five-minute cooldown after first invocation before final commit.
+</Warning>
+
+## Reading the audit log
+
+Every governance action — every pause, every mode toggle, every force-close — is recorded in the governance log with timestamp, actor, action, target, and reason. Auditors with the Auditor role can read the log directly.
+
+For external compliance reviews, deepidv can export a signed copy of the governance log scoped to a specific time window. Contact your account team to request an export.
+
+## What the console does NOT do (intentionally)
+
+- **Key rotation.** No rotation of `chain-master` or active issuer KMS keys is possible via the console in v1. Rotation requires the M10+ key-version capture support and a separately gated rotation ceremony.
+- **Envelope deletion.** The chain layer is append-only. Nothing is ever deleted. Mistaken or invalid envelopes remain in the log; a separate revocation envelope can be issued to mark the original as invalid, but the original persists for audit.
+- **Direct DDB writes.** The console invokes governance APIs that wrap the underlying datastores. No direct database access is exposed.

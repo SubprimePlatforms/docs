@@ -1,0 +1,54 @@
+---
+title: Attestation Detail Pages
+description: Reading the full six-step proof pipeline for a single verification
+---
+
+> When you land on `proof.deepidv.com/a/{id}`, you're looking at the full proof of one specific verification.
+
+## Reading the six-step pipeline
+
+Each step has a status badge:
+
+- **Verified** — the check passed. The cryptographic signature, the timestamp, the inclusion proof, the anchor all check out.
+- **Skipped** — applies only to TSA token verification in the SDK `verifyBundle()` path, because the SDKs do not ship X.509 chain validation in v1. The explorer always verifies all six steps; only the offline-SDK path skips TSA.
+- **Failed** — should never happen for a legitimate attestation. If you see it, something has been tampered with.
+
+## What each step means
+
+<Steps>
+  <Step title="Envelope hash">
+    SHA-256 of the canonicalized (JCS, RFC 8785) envelope JSON. Anchors the rest of the chain — every signature below is over this hash.
+  </Step>
+  <Step title="Issuer signature">
+    ECDSA P-256 signature by the issuer's KMS-held private key over the envelope hash. Verified against the issuer's public key, which is in the bundle and on the issuer profile page.
+  </Step>
+  <Step title="Dual RFC 3161 timestamps">
+    Independent timestamp tokens from DigiCert and Sectigo, each binding the envelope hash to a specific moment in time. Either alone is sufficient evidence; both together are belt-and-suspenders.
+  </Step>
+  <Step title="Merkle inclusion">
+    The audit path from this envelope's leaf to the segment's STH root. Verifies the envelope is actually in the log — not just claimed to be.
+  </Step>
+  <Step title="Master STH signature">
+    ECDSA P-256 signature by the chain-master key over the STH (root + tree size + timestamp). Verified against `master.pem` published on the log page.
+  </Step>
+  <Step title="On-chain anchor">
+    The Base L2 transaction hash committing the STH root. Click through to Basescan to confirm the root appears on-chain at the claimed block height.
+  </Step>
+</Steps>
+
+## Label commitments
+
+Each envelope carries a list of labels — structured metadata like country, tier, document type, KYC level. In the bundle and on the detail page, you see:
+
+| name | value | status |
+|---|---|---|
+| country | `CA` | Revealed |
+| tier | `[committed but not revealed]` | Committed |
+
+A label is **Revealed** when the issuer has chosen to publish the salt alongside the value commitment. The value is then verifiable: take the value, append the salt, hash it, and compare to the commitment in the envelope. If they match, the label is real.
+
+A label is **Committed** when only the commitment is published. The issuer holds the salt off-chain. They can prove the label's value to a specific counterparty without revealing it publicly.
+
+<Warning>
+Salts are **never** rendered in the explorer or included in proof bundles.
+</Warning>

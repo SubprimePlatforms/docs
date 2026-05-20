@@ -1,0 +1,42 @@
+---
+title: The Registry
+description: Browse, filter, and search every attestation in the chain layer
+---
+
+> The registry at [proof.deepidv.com/registry](https://proof.deepidv.com/registry) is the searchable surface across every public attestation.
+
+## Browsing attestations
+
+Use the registry to:
+
+- Confirm a specific attestation exists (paste the ULID or envelope hash prefix)
+- Audit an issuer's volume and patterns
+- Inspect attestations across a specific segment
+
+## Filters and search
+
+Every filter is URL-state-backed — you can share a link to a filtered view, bookmark it, or paste it into a report.
+
+| Filter | What it does |
+|---|---|
+| **Record type chip** | `IDV` active. `BIO` / `DOC` / `ADDR` show as "Phase 2" disabled. `WIT` / `AGT` not yet visible (Phase 3). |
+| **Search box** | ULID, envelope hash prefix, or issuer ID |
+| **Issuer dropdown** | Restrict to one issuer at a time |
+| **Segment number** | Restrict to one segment at a time |
+
+## Privacy posture
+
+The registry surfaces only the public, non-identifying fields. You'll see:
+
+- The attestation ULID (random, not derivable to a user)
+- The pseudonymous subject ID
+- The issuer ID
+- The envelope hash prefix
+- The mint timestamp
+- The segment
+
+<Warning>
+You will **never** see, in the registry or anywhere on the explorer: real names, email addresses, phone numbers, passport numbers, document numbers, or any other PII.
+
+Label values longer than 64 characters are server-side redacted with the placeholder `[committed but not revealed]`. Salt values are never published anywhere — not in the registry, not in attestation detail pages, not in proof bundles.
+</Warning>

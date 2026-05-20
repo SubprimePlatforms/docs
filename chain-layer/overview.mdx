@@ -1,0 +1,55 @@
+---
+title: Overview
+description: The cryptographic transparency log behind every deepidv verification
+---
+
+> The chain layer is the cryptographic transparency substrate underneath every deepidv verification — a public, append-only log anchored hourly to a blockchain.
+
+When a verification is minted — a KYC check, document validation, address proof, agent identity — the chain layer produces a signed envelope, places it in an append-only log, and emits hourly checkpoints anchored to a public blockchain.
+
+The result: anyone, anywhere, in any language, can verify that a specific verification happened, when it happened, who issued it, and that the record has not been changed since. Without trusting deepidv.
+
+You do not need a deepidv account to use the chain layer. The explorer at [proof.deepidv.com](https://proof.deepidv.com) is public. The SDKs are open. The proof bundles are downloadable, verifiable offline, and portable.
+
+## Why it exists
+
+Trust in identity verification has always been "trust us" — the issuer says they verified you, and downstream parties accept the issuer's word. That works when the issuer is reputable, accountable, and reachable. It breaks the moment any of those three fail.
+
+The chain layer replaces "trust us" with "verify for yourself." Every attestation deepidv issues is committed to a public, append-only, cryptographically signed log. Auditors, regulators, counterparties, and consumers can verify the same record without going through deepidv at all.
+
+## The 60-second mental model
+
+<Steps>
+  <Step title="An issuer verifies a subject">
+    A deepidv tenant (the issuer) verifies something about a subject — a person, organization, or agent.
+  </Step>
+  <Step title="A signed envelope is produced">
+    The chain layer produces a signed envelope — a JSON record bound to the issuer's key, the verification result, and a set of label commitments that bind metadata without revealing it.
+  </Step>
+  <Step title="The envelope lands in a segment">
+    The envelope is appended to a Merkle tree called a **segment**.
+  </Step>
+  <Step title="An hourly STH is broadcast">
+    Every hour, the segment's tree root is signed (a Signed Tree Head, or STH) and broadcast to the Base L2 blockchain.
+  </Step>
+  <Step title="Anyone can download a proof bundle">
+    With the attestation ID, anyone can download a proof bundle (a `.dpiv` file) containing everything needed to verify the chain of signatures end to end.
+  </Step>
+</Steps>
+
+That's it. The rest of this documentation explains each piece.
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="diagram-project" href="/chain-layer/how-it-works">
+    Envelopes, segments, STHs, and on-chain anchoring explained.
+  </Card>
+  <Card title="The Explorer" icon="magnifying-glass" href="/chain-layer/explorer">
+    Browse the public transparency log at proof.deepidv.com.
+  </Card>
+  <Card title="Proof Bundles" icon="file-zipper" href="/chain-layer/proof-bundles">
+    Downloadable, offline-verifiable .dpiv archives.
+  </Card>
+  <Card title="Trust Model" icon="shield-check" href="/chain-layer/trust-model">
+    What you verify independently — and what you trust.
+  </Card>
+</CardGroup>
