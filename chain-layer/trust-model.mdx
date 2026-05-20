@@ -1,0 +1,27 @@
+---
+title: Trust Model
+description: What you verify independently of deepidv — and what you trust
+---
+
+> What you trust, and what you don't, when verifying a deepidv attestation.
+
+## What you can verify independently of deepidv
+
+- **The envelope is real.** Issuer signature → issuer public key. You don't need to trust deepidv; you need to trust the issuer's key custody, which is published on the issuer profile.
+- **The envelope existed at the claimed time.** Two independent RFC 3161 TSAs (DigiCert + Sectigo). Either one would have to collude with deepidv to fake a timestamp. Both colluding is the threat model only nation-states meet.
+- **The envelope is in the log.** Merkle inclusion proof verified against the STH root.
+- **The STH is authentic.** Master signature verified against the master public key on the log page.
+- **The STH was committed publicly.** Base L2 anchor transaction visible on Basescan, with the root hash in the event log.
+
+## What you trust
+
+- **The issuer's key custody.** If the issuer's private key is stolen, an attacker could forge envelopes from that issuer. Deepidv mitigates this by holding all issuer keys in AWS KMS with per-tenant IAM scoping; the private key never leaves KMS.
+- **The chain-master key custody.** Same model — held in KMS, signs only via the STH signer service, never extracted.
+- **The Base L2 chain itself.** If Base L2 were to suffer a deep reorganization, on-chain anchors could be invalidated. In practice, Base inherits Ethereum L1 security after a small soak; v1 considers Base anchors final after one confirmation.
+
+## What's intentionally NOT in the bundle
+
+- **The subject's identity.** Subject IDs are pseudonymous. The bundle proves an envelope was issued for some subject; it does not name them.
+- **Unrevealed label values.** If the issuer holds a label's salt, the value isn't in the bundle. The commitment is. The value can be revealed separately to a specific counterparty without going through the chain layer.
+- **The claim body.** Underlying verification artifacts — the actual ID photo, the actual liveness selfie, the actual document scan — are not included. They live in deepidv's encrypted storage, governed by your data agreement.
+- **Salt values.** Never. Not in the bundle, not on the explorer, not in any API response, not ever.

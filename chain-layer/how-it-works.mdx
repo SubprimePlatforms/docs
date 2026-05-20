@@ -1,0 +1,85 @@
+---
+title: How It Works
+description: Envelopes, segments, STHs, and on-chain anchoring
+---
+
+> The chain layer is built from five primitives: envelopes, issuers, segments, signed tree heads, and on-chain anchors.
+
+## Envelopes
+
+An envelope is the atomic unit of the chain layer. It's a JSON document with a fixed schema, signed by an issuer's private key:
+
+```json
+{
+  "schema_version": "idv/v1",
+  "record_type": "IDV",
+  "subject": "sub_01HZ8...",
+  "issuer_id": "iss_acme_kyc",
+  "envelope_hash": "0x...",
+  "issued_at": "2026-05-21T14:32:01Z",
+  "labels": [
+    { "name": "country", "value_commitment": "0x...", "salt_commitment": "0x..." },
+    { "name": "tier",    "value_commitment": "0x...", "salt_commitment": "0x..." }
+  ],
+  "issuer_sig": "0x..."
+}
+```
+
+Key properties:
+
+- **Subject IDs are pseudonymous.** Derived via HKDF from the real user ID plus a tenant-scoped secret. Two different tenants verifying the same person produce different subject IDs.
+- **Labels carry commitments, not values.** The actual label value (e.g. `"Canada"`, `"Tier 3"`) is hashed with a random salt. The hash goes into the envelope; the salt stays off-chain with the issuer. Only with the salt can a third party verify what the label says.
+- **Canonical JSON.** The whole envelope is canonicalized via JCS (RFC 8785) before signing — so byte-identical signatures across any language or runtime.
+- **ECDSA P-256.** Signed with ECDSA P-256 against an issuer-scoped key held in AWS KMS. The private key never leaves KMS.
+
+## Issuers
+
+Every envelope has exactly one issuer. Issuers are tenants of the deepidv platform — companies, organizations, or trusted entities that have been registered with the chain layer and granted minting rights.
+
+Each issuer has:
+
+- A unique `issuer_id` (e.g. `iss_acme_kyc`)
+- A P-256 public key, downloadable from their issuer profile
+- A rotation history (empty in v1 — issuer keys are pinned for the life of the segment)
+
+Anyone verifying a proof bundle pulls the issuer's public key from the bundle itself and re-validates the signature. Independent of deepidv.
+
+## Segments and Merkle trees
+
+Envelopes don't sit individually on the chain. They're grouped into **segments** — append-only Merkle trees (RFC 6962, SHA-256, domain-separated). Each segment has:
+
+- An integer ID (starting at 0)
+- A tree size that grows as new envelopes land
+- A current Merkle root that updates with every mint
+- An hourly schedule of Signed Tree Heads (see below)
+
+Segments close on a regular cadence (operational decision; v1 closes when tree size reaches a threshold or 30 days elapse, whichever first). When a segment closes, its final STH is broadcast and the next segment starts fresh.
+
+## Signed Tree Heads (STHs)
+
+Every hour, for every active segment, the chain layer:
+
+1. Computes the current Merkle root over all envelopes in the segment
+2. Signs the root + tree size + timestamp with the **chain-master key** (a single P-256 key held in KMS, separate from any issuer key)
+3. Timestamps the signature with two independent RFC 3161 time-stamping authorities (DigiCert + Sectigo)
+4. Broadcasts the STH on-chain to Base L2 via the `DeepIdvRegistry` smart contract
+
+The STH is the load-bearing object of the transparency log. As long as you trust one of the two RFC 3161 TSAs and the Base L2 chain itself, you have a cryptographically signed proof that this exact Merkle root existed at this exact moment in time.
+
+## On-chain anchoring
+
+STH broadcasts land on Base L2 (an Ethereum Layer 2 chain) every hour. The `DeepIdvRegistry` contract emits an `AnchorCheckpoint` event containing the segment ID, tree size, root hash, timestamp, and master signature.
+
+Three things this gets you:
+
+- **Tamper-evidence.** If anyone modified an envelope after its STH was anchored, the recomputed root would no longer match the on-chain commitment.
+- **Independent third-party verification.** Anyone with a proof bundle can check the on-chain root via Basescan or any Base RPC provider, without touching deepidv infrastructure.
+- **Trustless long-term archive.** Even if deepidv ceased to exist tomorrow, the on-chain anchors persist as long as Ethereum does.
+
+<Warning>
+**On-chain commitments are not tokens.** The envelope hashes published to Base L2 are cryptographic commitments to verification records. They are not transferable. They have no monetary value. They cannot be bought or sold. Their only purpose is independent verification.
+</Warning>
+
+## Proof bundles
+
+A proof bundle is a downloadable archive (`.dpiv` extension) containing everything needed to verify one specific attestation, end to end, offline. See [Proof Bundles](/chain-layer/proof-bundles) for the full contents.

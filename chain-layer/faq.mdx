@@ -1,0 +1,38 @@
+---
+title: FAQ
+description: Common questions about the chain layer
+---
+
+## Are these on-chain hashes tokens?
+
+**No.** The hashes published to Base L2 are cryptographic commitments to verification records. They cannot be transferred, traded, bought, or sold. They have no monetary value. Their only purpose is independent verification.
+
+## Why two RFC 3161 TSAs?
+
+So no single timestamp authority can fabricate, revoke, or alter a timestamp. DigiCert and Sectigo are operationally independent. An attacker would need to compromise both — plus the chain-master key, plus the issuer key — to fake a fully verifiable attestation. The threshold scales with the number of independent parties.
+
+## Why Base L2 instead of Ethereum L1?
+
+Cost. A Base L2 STH anchor costs roughly $0.003. The same anchor on Ethereum L1 would cost $1–5. Base inherits Ethereum security after a small soak, which is more than enough for hourly STH commitments. If a customer requires an L1 mirror, that's available as a Phase 4 enterprise add-on.
+
+## What happens if deepidv disappears?
+
+The on-chain anchors persist on Base L2. The master public key is downloadable now from the [log page](/chain-layer/log); save it. The proof bundles you've already downloaded continue to verify offline forever using `verify.sh`. The SDKs are open-source on npm and PyPI and continue to function. The only thing that goes away is the live API for fetching new bundles; for that, future bundles would need to be retrieved another way (block explorers, archived snapshots).
+
+## Can deepidv modify or delete an envelope after it's issued?
+
+**No.** The chain layer is append-only. Once an envelope's hash is included in an STH, modifying it would invalidate the Merkle root, the master signature, and the on-chain anchor. An invalid envelope can be marked as such by issuing a revocation envelope that references the original, but the original itself is permanent.
+
+## What's the difference between the chain layer and deepidv's main verification engine?
+
+The verification engine actually performs the verification — runs the KYC check, validates the document, scores the liveness. The chain layer records the result in a public, tamper-evident log. Verification is what we do; the chain layer is the proof.
+
+## What's coming in Phase 2 and Phase 3?
+
+**Phase 2** (in progress) wires per-attestation on-chain commitments and adds the foundation for the **$DIDV token** — a service-consumption token that users earn for completing verifications and witnessing others.
+
+**Phase 3** launches the token, integrates with WorldID for sybil-resistant social attestations, and adds agent identity verification (`AGT` records) for AI agents acting on behalf of users.
+
+## Is the chain layer GDPR-compliant?
+
+**Yes.** No personal data is ever published on-chain or in the public log. Pseudonymous subject IDs are derived such that they cannot be reverse-engineered without the per-tenant secret. Label values are committed by default and revealed only with explicit issuer-controlled disclosure. The right-to-erasure framework is supported through revocation envelopes; underlying personal data in our encrypted storage is fully erasable under your data agreement.
