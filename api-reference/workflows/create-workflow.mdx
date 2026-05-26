@@ -54,6 +54,9 @@ Each step accepts optional configuration. If omitted, sensible defaults are appl
 | `require_tertiary_id` | boolean | `false` | Require a third form of ID |
 | `face_front_photo_only` | boolean | `false` | Only capture front-facing photo |
 | `require_front_only` | boolean | `false` | Only scan front of ID |
+| `enable_fraud_analysis` | boolean | `false` | Enable synchronous fraud analysis on submitted IDs. Automatically enabled when `escalation_type` is not `none` |
+| `escalation_type` | string | `"none"` | Escalation method when fraud risk is high. One of `none`, `nfc-passport`. Implicitly enables `enable_fraud_analysis` |
+| `escalation_risk_threshold` | integer | `60` | Fraud risk score (0–100) at or above which escalation is triggered. Only applies when `escalation_type` is not `none` |
 
 #### FACE_LIVENESS config
 
@@ -71,6 +74,43 @@ Each step accepts optional configuration. If omitted, sensible defaults are appl
 
 No configuration options. These steps use default settings.
 
+### Fraud Analysis & Escalation
+
+The `ID_VERIFICATION` step supports optional fraud analysis and conditional escalation. When fraud analysis is enabled, submitted IDs are evaluated synchronously for tampering and fraud signals before the session completes.
+
+**Fraud analysis only** — enable analysis without triggering an extra verification step:
+
+```json
+{
+  "id": "ID_VERIFICATION",
+  "config": {
+    "enable_fraud_analysis": true
+  }
+}
+```
+
+**Fraud analysis with NFC passport escalation** — when the fraud risk score meets or exceeds the threshold, the applicant is prompted for a Passport NFC Scan:
+
+```json
+{
+  "id": "ID_VERIFICATION",
+  "config": {
+    "escalation_type": "nfc-passport",
+    "escalation_risk_threshold": 75
+  }
+}
+```
+
+<Note>
+Setting `escalation_type` to a value other than `none` implicitly enables fraud analysis. You do not need to set `enable_fraud_analysis` separately.
+</Note>
+
+| Scenario | `enable_fraud_analysis` | `escalation_type` | Behavior |
+|----------|------------------------|--------------------|----------|
+| Default (no config) | `false` | `"none"` | Fraud analysis runs asynchronously, no escalation |
+| Analysis only | `true` | `"none"` | Fraud analysis runs synchronously, results returned, no escalation |
+| Analysis + escalation | `true` (implicit) | `"nfc-passport"` | Fraud analysis runs synchronously, escalation triggered when risk score >= threshold |
+
 ### Example request
 
 <CodeGroup>
@@ -85,7 +125,9 @@ curl -X POST "https://api.deepidv.com/v1/workflows" \
         "id": "ID_VERIFICATION",
         "config": {
           "minimum_age": 21,
-          "expiry_date_years": 5
+          "expiry_date_years": 5,
+          "escalation_type": "nfc-passport",
+          "escalation_risk_threshold": 75
         }
       },
       {
@@ -115,7 +157,12 @@ const response = await fetch(
       steps: [
         {
           id: "ID_VERIFICATION",
-          config: { minimum_age: 21, expiry_date_years: 5 },
+          config: {
+            minimum_age: 21,
+            expiry_date_years: 5,
+            escalation_type: "nfc-passport",
+            escalation_risk_threshold: 75,
+          },
         },
         {
           id: "FACE_LIVENESS",
@@ -146,7 +193,12 @@ response = requests.post(
         "steps": [
             {
                 "id": "ID_VERIFICATION",
-                "config": {"minimum_age": 21, "expiry_date_years": 5},
+                "config": {
+                    "minimum_age": 21,
+                    "expiry_date_years": 5,
+                    "escalation_type": "nfc-passport",
+                    "escalation_risk_threshold": 75,
+                },
             },
             {
                 "id": "FACE_LIVENESS",
@@ -223,6 +275,13 @@ Returns the full workflow record. The response uses the same format as [Retrieve
           },
           "valid_states_settings": {
             "valid_states": { "AL": true, "AK": true, "AZ": true, "...": "all US + CA" }
+          },
+          "fraud_analysis_settings": {
+            "enable_fraud_analysis": true
+          },
+          "fraud_analysis_escalation": {
+            "escalation_type": "nfc-passport",
+            "escalation_risk_threshold": 75
           }
         }
       },
