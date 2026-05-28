@@ -55,6 +55,7 @@ deepidv sends the following event types:
 | `session.status.submitted` | An applicant has completed and submitted their verification session |
 | `session.status.verified` | A verification session has been marked as verified |
 | `session.status.rejected` | A verification session has been marked as rejected |
+| `session.status.failed` | A verification session has hit the configured failed-attempt limit and been auto-failed |
 
 You can subscribe to all events or only the ones relevant to your integration. See the [Event Object](/webhooks/event-object) reference for the full payload structure.
 
@@ -104,6 +105,11 @@ app.post("/webhooks/deepidv", express.json(), (req, res) => {
       // Session rejected — notify applicant, flag for review, etc.
       console.log("Session rejected:", event.data.id);
       break;
+    case "session.status.failed":
+      // Session auto-failed after too many failed attempts —
+      // inspect event.data.meta_data.failureData.attempts for context
+      console.log("Session failed:", event.data.id);
+      break;
     case "session.created":
       // New session created
       console.log("Session created:", event.data.id);
@@ -144,6 +150,10 @@ def webhook():
     elif event_type == "session.status.rejected":
         # Session rejected
         print(f"Session rejected: {data['id']}")
+    elif event_type == "session.status.failed":
+        # Session auto-failed after too many failed attempts —
+        # inspect data["meta_data"]["failureData"]["attempts"] for context
+        print(f"Session failed: {data['id']}")
     elif event_type == "session.created":
         # New session created
         print(f"Session created: {data['id']}")

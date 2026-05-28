@@ -168,6 +168,8 @@ export const VideoEmbed = ({ src, title = "Video" }) => (
     | `VERIFIED` | All checks passed |
     | `REJECTED` | One or more checks failed |
     | `VOIDED` | Session manually cancelled by a reviewer |
+    | `EXPIRED` | Session auto-expired before the applicant submitted |
+    | `FAILED` | Session auto-failed after the workflow's configured number of failed attempts |
 
     If you configured a webhook, deepidv sends events to your endpoint automatically — no polling required.
 
