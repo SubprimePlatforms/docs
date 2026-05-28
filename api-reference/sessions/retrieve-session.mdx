@@ -77,7 +77,7 @@ response = requests.get(
 | `external_id` | string | Your external reference ID (if provided) |
 | `permalink_id` | string | Permalink ID (if applicable) |
 | `location` | object | Applicant's location (if captured), e.g. `{ "country": "Canada" }` |
-| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, `VOIDED`, or `EXPIRED` |
+| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, `VOIDED`, `EXPIRED`, or `FAILED` |
 | `type` | string | `session` (workflow-based), `verification` (standalone), `credit-application` (ClearView), `silent-screening` (silent screening), or `deep-doc` (document transfer) |
 | `session_progress` | string | `PENDING`, `STARTED`, or `COMPLETED` |
 | `created_at` | string | ISO 8601 timestamp of session creation |
@@ -103,6 +103,7 @@ response = requests.get(
 | `applicantSubmissionBrowser` | string | Browser used for submission |
 | `applicantSubmissionLocation` | string | Human-readable submission location (typically `"City, Country"` when available) |
 | `applicantSubmissionLocationDetails` | object | Structured geo lookup of the submission IP (see below) |
+| `failure_data` | object | Auto-failure attempt history (only present once at least one failed attempt has been recorded — see below) |
 
 ### `applicantSubmissionLocationDetails` object
 
@@ -120,6 +121,33 @@ Derived from a geo lookup of the submission IP. All fields are optional — any 
 | `postalCode` | string | Postal/ZIP code |
 | `subdivision` | string | State, province, or other primary subdivision |
 | `timeZone` | string | IANA timezone identifier (e.g. `"America/Chicago"`) |
+
+### `failure_data` object
+
+Tracks per-attempt failures when the workflow has auto-session-failure enabled. Absent until the first failed attempt is recorded. When `failedAttempts` reaches the workflow's configured `maxAttempts`, the session's top-level `status` flips to `FAILED` and `session_progress` to `COMPLETED`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `failedAttempts` | number | Count of failed attempts recorded for this session |
+| `attempts` | object[] | Ordered list of attempts (oldest first) — one entry per recorded failure |
+
+Each entry in `attempts` has the following shape:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reason` | string | The check that failed. Currently one of `NO_FACE_DETECTED`, `OCR_NAME_MISSING`, or `DOC_TYPE_NOT_ALLOWED`. New values may be added over time — consumers should treat this as an open string. |
+| `slot` | string \| null | Which ID slot the failure applies to: `PRIMARY`, `SECONDARY`, `TERTIARY`, or `null` when the failure is not slot-specific. |
+| `failedAt` | string | ISO 8601 timestamp of when the attempt was recorded |
+
+```json
+"failure_data": {
+  "failedAttempts": 2,
+  "attempts": [
+    { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2026-05-26T15:30:00.000Z" },
+    { "reason": "OCR_NAME_MISSING", "slot": "SECONDARY", "failedAt": "2026-05-26T15:32:14.000Z" }
+  ]
+}
+```
 
 ### `analysis_data` object
 
@@ -244,6 +272,12 @@ Both `user` (the applicant) and `sender_user` (the session creator) share the sa
         "longitude": -87.6517,
         "subdivision": "Illinois",
         "timeZone": "America/Chicago"
+      },
+      "failure_data": {
+        "failedAttempts": 1,
+        "attempts": [
+          { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2025-01-15T10:37:00.000Z" }
+        ]
       }
     },
     "uploads": {

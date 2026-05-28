@@ -191,6 +191,25 @@ Returns a `PENDING` session with no analysis data and `session_progress: "PENDIN
 
 Returns a `VOIDED` session with no analysis data.
 
+#### `test_failed`
+
+Returns a `FAILED` session — a session that was auto-failed after reaching the workflow's configured number of failed attempts. `session_progress` is `COMPLETED` and `meta_data.failure_data` is populated with the recorded attempts:
+
+```json
+"meta_data": {
+  "failure_data": {
+    "failedAttempts": 3,
+    "attempts": [
+      { "reason": "NO_FACE_DETECTED",   "slot": "PRIMARY",   "failedAt": "2025-01-15T10:36:00.000Z" },
+      { "reason": "OCR_NAME_MISSING",   "slot": "PRIMARY",   "failedAt": "2025-01-15T10:38:14.000Z" },
+      { "reason": "DOC_TYPE_NOT_ALLOWED", "slot": "SECONDARY", "failedAt": "2025-01-15T10:40:02.000Z" }
+    ]
+  }
+}
+```
+
+See [`failure_data`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference.
+
 ### List Sessions — `GET /v1/sessions`
 
 Returns 5 sessions (one per status) with lightweight analysis data. The list uses basic analysis — the full "everything" payload is only returned when fetching `test_verified` by ID.
