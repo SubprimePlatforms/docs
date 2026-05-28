@@ -103,7 +103,7 @@ response = requests.get(
 | `applicantSubmissionBrowser` | string | Browser used for submission |
 | `applicantSubmissionLocation` | string | Human-readable submission location (typically `"City, Country"` when available) |
 | `applicantSubmissionLocationDetails` | object | Structured geo lookup of the submission IP (see below) |
-| `failure_data` | object | Auto-failure attempt history (only present once at least one failed attempt has been recorded — see below) |
+| `failureData` | object | Auto-failure attempt history (only present once at least one failed attempt has been recorded — see below) |
 
 ### `applicantSubmissionLocationDetails` object
 
@@ -122,7 +122,7 @@ Derived from a geo lookup of the submission IP. All fields are optional — any 
 | `subdivision` | string | State, province, or other primary subdivision |
 | `timeZone` | string | IANA timezone identifier (e.g. `"America/Chicago"`) |
 
-### `failure_data` object
+### `failureData` object
 
 Tracks per-attempt failures when the workflow has auto-session-failure enabled. Absent until the first failed attempt is recorded. When `failedAttempts` reaches the workflow's configured `maxAttempts`, the session's top-level `status` flips to `FAILED` and `session_progress` to `COMPLETED`.
 
@@ -140,7 +140,7 @@ Each entry in `attempts` has the following shape:
 | `failedAt` | string | ISO 8601 timestamp of when the attempt was recorded |
 
 ```json
-"failure_data": {
+"failureData": {
   "failedAttempts": 2,
   "attempts": [
     { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2026-05-26T15:30:00.000Z" },
@@ -273,7 +273,7 @@ Both `user` (the applicant) and `sender_user` (the session creator) share the sa
         "subdivision": "Illinois",
         "timeZone": "America/Chicago"
       },
-      "failure_data": {
+      "failureData": {
         "failedAttempts": 1,
         "attempts": [
           { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2025-01-15T10:37:00.000Z" }

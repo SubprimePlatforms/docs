@@ -224,7 +224,7 @@ Sent when a session is marked as rejected. The payload structure is the same as 
 
 ### `session.status.failed`
 
-Sent when a session is auto-failed by the system after reaching the workflow's configured maximum number of failed attempts. The payload structure is the same as `session.status.submitted`, with `status` set to `FAILED`, `session_progress` set to `COMPLETED`, and `meta_data.failure_data` populated with the recorded attempts.
+Sent when a session is auto-failed by the system after reaching the workflow's configured maximum number of failed attempts. The payload structure is the same as `session.status.submitted`, with `status` set to `FAILED`, `session_progress` set to `COMPLETED`, and `meta_data.failureData` populated with the recorded attempts.
 
 ```json
 {
@@ -235,7 +235,7 @@ Sent when a session is auto-failed by the system after reaching the workflow's c
     "session_progress": "COMPLETED",
     "meta_data": {
       "applicantSubmissionIp": "192.168.1.1",
-      "failure_data": {
+      "failureData": {
         "failedAttempts": 3,
         "attempts": [
           { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY",   "failedAt": "2026-03-23T14:30:10.000Z" },
@@ -249,7 +249,7 @@ Sent when a session is auto-failed by the system after reaching the workflow's c
 }
 ```
 
-See [`failure_data`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference. `reason` is intentionally a loose string — new values may be added over time, so consumers should default-handle unknown values.
+See [`failureData`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference. `reason` is intentionally a loose string — new values may be added over time, so consumers should default-handle unknown values.
 
 ## What to do with each event
 
@@ -259,4 +259,4 @@ See [`failure_data`](/api-reference/sessions/retrieve-session#failure-data-objec
 | `session.status.submitted` | Trigger your review workflow, notify reviewers, update applicant status in your system |
 | `session.status.verified` | Grant access, activate accounts, send confirmation emails, update CRM records |
 | `session.status.rejected` | Notify applicant, flag for manual review, trigger re-verification flow |
-| `session.status.failed` | Notify applicant, surface a "contact support" path, and log `meta_data.failure_data.attempts` for diagnostics |
+| `session.status.failed` | Notify applicant, surface a "contact support" path, and log `meta_data.failureData.attempts` for diagnostics |

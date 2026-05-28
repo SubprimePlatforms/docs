@@ -107,7 +107,7 @@ app.post("/webhooks/deepidv", express.json(), (req, res) => {
       break;
     case "session.status.failed":
       // Session auto-failed after too many failed attempts —
-      // inspect event.data.meta_data.failure_data.attempts for context
+      // inspect event.data.meta_data.failureData.attempts for context
       console.log("Session failed:", event.data.id);
       break;
     case "session.created":
@@ -152,7 +152,7 @@ def webhook():
         print(f"Session rejected: {data['id']}")
     elif event_type == "session.status.failed":
         # Session auto-failed after too many failed attempts —
-        # inspect data["meta_data"]["failure_data"]["attempts"] for context
+        # inspect data["meta_data"]["failureData"]["attempts"] for context
         print(f"Session failed: {data['id']}")
     elif event_type == "session.created":
         # New session created

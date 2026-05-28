@@ -193,11 +193,11 @@ Returns a `VOIDED` session with no analysis data.
 
 #### `test_failed`
 
-Returns a `FAILED` session — a session that was auto-failed after reaching the workflow's configured number of failed attempts. `session_progress` is `COMPLETED` and `meta_data.failure_data` is populated with the recorded attempts:
+Returns a `FAILED` session — a session that was auto-failed after reaching the workflow's configured number of failed attempts. `session_progress` is `COMPLETED` and `meta_data.failureData` is populated with the recorded attempts:
 
 ```json
 "meta_data": {
-  "failure_data": {
+  "failureData": {
     "failedAttempts": 3,
     "attempts": [
       { "reason": "NO_FACE_DETECTED",   "slot": "PRIMARY",   "failedAt": "2025-01-15T10:36:00.000Z" },
@@ -208,7 +208,7 @@ Returns a `FAILED` session — a session that was auto-failed after reaching the
 }
 ```
 
-See [`failure_data`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference.
+See [`failureData`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference.
 
 ### List Sessions — `GET /v1/sessions`
 
