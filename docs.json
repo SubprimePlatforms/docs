@@ -103,11 +103,17 @@
             ]
           },
           {
-            "group": "Silent Screening (Coming Soon!)",
+            "group": "Silent Screening",
             "pages": [
               "api-reference/silent-screening/pep-sanctions",
               "api-reference/silent-screening/adverse-media",
               "api-reference/silent-screening/title-check"
+            ]
+          },
+          {
+            "group": "Async Jobs",
+            "pages": [
+              "api-reference/async-jobs/get-async-job"
             ]
           },
           {

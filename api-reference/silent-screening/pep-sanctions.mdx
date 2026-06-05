@@ -1,10 +1,130 @@
 ---
 title: PEP & Sanctions
 description: Screen individuals against global PEP and sanctions lists
+api: POST /v1/screening/pep-sanctions
 ---
 
-<Note>
-  This endpoint is **coming soon**. Silent screening APIs allow you to run compliance checks server-side without requiring applicant interaction.
-</Note>
+```
+POST /v1/screening/pep-sanctions
+```
 
-Screen an individual against global Politically Exposed Persons (PEP) and sanctions watchlists using only their name and date of birth. Returns matched records with confidence scores and source datasets.
+Screens an individual against politically-exposed-person (PEP) and sanctions watchlists (local lists plus OpenSanctions) using only their name and date of birth. Matches are normalized, grouped into `peps`, `sanctions`, and `both`, and deduped by `(name, dataset)` with a confidence score.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
+
+### Body parameters
+
+| Parameter     | Type   | Required | Description                           |
+| ------------- | ------ | -------- | ------------------------------------- |
+| `firstName`   | string | Yes      | Individual's first name (1–255 chars) |
+| `lastName`    | string | Yes      | Individual's last name (1–255 chars)  |
+| `dateOfBirth` | string | Yes      | Date of birth in `YYYY-MM-DD` format  |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/screening/pep-sanctions \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "dateOfBirth": "1980-01-15"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.deepidv.com/v1/screening/pep-sanctions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "YOUR_API_KEY",
+  },
+  body: JSON.stringify({
+    firstName: "John",
+    lastName: "Doe",
+    dateOfBirth: "1980-01-15",
+  }),
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.deepidv.com/v1/screening/pep-sanctions",
+    headers={
+        "Content-Type": "application/json",
+        "x-api-key": "YOUR_API_KEY",
+    },
+    json={
+        "firstName": "John",
+        "lastName": "Doe",
+        "dateOfBirth": "1980-01-15",
+    },
+)
+```
+
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field             | Type    | Description                                       |
+| ----------------- | ------- | ------------------------------------------------- |
+| `totalMatches`    | integer | Total number of matched records across all groups |
+| `peps`            | array   | Matches found only on PEP lists                   |
+| `sanctions`       | array   | Matches found only on sanctions lists             |
+| `both`            | array   | Matches found on both PEP and sanctions lists     |
+| `searchedSources` | array   | Names of the datasets/sources that were queried   |
+
+Each match in `peps`, `sanctions`, and `both` has the following shape:
+
+| Field         | Type           | Description                                      |
+| ------------- | -------------- | ------------------------------------------------ |
+| `name`        | string         | Matched record name                              |
+| `country`     | string \| null | Country associated with the record, if known    |
+| `dateOfBirth` | string \| null | Date of birth on the record, if known            |
+| `confidence`  | number         | Match confidence `0–1` (higher = stronger match) |
+| `datasets`    | array          | Source datasets that contributed this match      |
+
+### Error responses
+
+| Status             | Description                               |
+| ------------------ | ----------------------------------------- |
+| `400 Bad Request`  | Request body failed schema validation     |
+| `401 Unauthorized` | API key is invalid                        |
+| `403 Forbidden`    | API key is missing or resource not in org |
+| `404 Not Found`    | Referenced resource was not found         |
+| `500 Server Error` | Unexpected server error                   |
+
+<ResponseExample>
+```json 200
+{
+  "totalMatches": 1,
+  "peps": [
+    {
+      "name": "John Doe",
+      "country": "US",
+      "dateOfBirth": "1980-01-15",
+      "confidence": 0.92,
+      "datasets": ["us_ofac_sdn"]
+    }
+  ],
+  "sanctions": [],
+  "both": [],
+  "searchedSources": ["local", "opensanctions"]
+}
+```
+</ResponseExample>
