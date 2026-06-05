@@ -1,0 +1,191 @@
+---
+title: Get Boundaries
+description: Query or update parental boundary settings by attestation ID
+api: GET /v1/age-verification/parent-connect/boundaries/{attestation_id}
+---
+
+```
+GET /v1/age-verification/parent-connect/boundaries/{attestation_id}
+```
+
+Returns the current parental boundary settings for a child's attestation. Use this to enforce the restrictions the parent configured during the Parent Connect consent flow.
+
+## Request
+
+### Headers
+
+| Header      | Required | Description  |
+| ----------- | -------- | ------------ |
+| `x-api-key` | Yes      | Your API key |
+
+### Path parameters
+
+| Parameter        | Type   | Required | Description                                                |
+| ---------------- | ------ | -------- | ---------------------------------------------------------- |
+| `attestation_id` | string | Yes      | The child's attestation ID (format: `attest_<ULID>`)       |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+  { headers: { "x-api-key": "YOUR_API_KEY" } }
+);
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 --- Success
+
+| Field                  | Type    | Description                                       |
+| ---------------------- | ------- | ------------------------------------------------- |
+| `child_attestation_id` | string  | The attestation ID queried                        |
+| `parent_connect_id`    | string  | Parent Connect record ID                          |
+| `parent_session_id`    | string  | Parent's verification session ID                  |
+| `age_band`             | string  | Child's age band (e.g. `"13-17"`)                 |
+| `boundaries`           | object  | Current boundary settings keyed by boundary `key` |
+| `eula_accepted`        | boolean | Whether the parent accepted the EULA              |
+| `status`               | string  | `CONSENT_GIVEN`                                   |
+| `consent_expires_at`   | string  | ISO 8601 expiration timestamp (180 days)          |
+
+### Error responses
+
+| Status | Description                                                   |
+| ------ | ------------------------------------------------------------- |
+| `401`  | Missing or invalid `x-api-key`                                |
+| `404`  | Attestation not found, or not linked to a Parent Connect flow |
+
+<ResponseExample>
+```json 200
+{
+  "child_attestation_id": "attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+  "parent_connect_id": "pc_a1b2c3d4e5f67890",
+  "parent_session_id": "p1q2r3s4-t5u6-7890-abcd-ef1234567890",
+  "age_band": "13-17",
+  "boundaries": {
+    "in_game_purchases": false,
+    "voice_chat": false,
+    "friend_requests": "friends_of_friends",
+    "daily_time_limit": 120,
+    "mature_content": false,
+    "user_generated_content": true
+  },
+  "eula_accepted": true,
+  "status": "CONSENT_GIVEN",
+  "consent_expires_at": "2026-11-10T11:00:00.000Z"
+}
+```
+</ResponseExample>
+
+---
+
+## Update Boundaries
+
+```
+PUT /v1/age-verification/parent-connect/boundaries/{attestation_id}
+```
+
+Updates the parental boundary settings without requiring the parent to re-verify. The updated boundaries are stored on both the session and the Parent Connect record.
+
+A `parent_connect.boundaries_updated` webhook is fired to your registered endpoint.
+
+### Body parameters
+
+| Parameter    | Type   | Required | Description                              |
+| ------------ | ------ | -------- | ---------------------------------------- |
+| `boundaries` | object | Yes      | Updated boundary settings as key-value pairs |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "boundaries": {
+      "in_game_purchases": true,
+      "daily_time_limit": 180,
+      "mature_content": false
+    }
+  }'
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+  {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": "YOUR_API_KEY",
+    },
+    body: JSON.stringify({
+      boundaries: {
+        in_game_purchases: true,
+        daily_time_limit: 180,
+        mature_content: false,
+      },
+    }),
+  }
+);
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    "https://api.deepidv.com/v1/age-verification/parent-connect/boundaries/attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+    headers={"x-api-key": "YOUR_API_KEY"},
+    json={
+        "boundaries": {
+            "in_game_purchases": True,
+            "daily_time_limit": 180,
+            "mature_content": False,
+        }
+    },
+)
+```
+</CodeGroup>
+
+### 200 --- Success
+
+| Field                  | Type   | Description           |
+| ---------------------- | ------ | --------------------- |
+| `child_attestation_id` | string | Attestation ID        |
+| `parent_connect_id`    | string | Parent Connect ID     |
+| `boundaries`           | object | Updated boundaries    |
+| `updated_at`           | string | ISO 8601 timestamp    |
+
+<ResponseExample>
+```json 200
+{
+  "child_attestation_id": "attest_01HX7Q3K2M4N5P6R7S8T9V0W",
+  "parent_connect_id": "pc_a1b2c3d4e5f67890",
+  "boundaries": {
+    "in_game_purchases": true,
+    "daily_time_limit": 180,
+    "mature_content": false
+  },
+  "updated_at": "2026-05-14T15:30:00.000Z"
+}
+```
+</ResponseExample>

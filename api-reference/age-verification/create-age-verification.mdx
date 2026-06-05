@@ -1,0 +1,134 @@
+---
+title: Create Age Verification
+description: Create a new age verification session
+api: POST /v1/age-verification
+---
+
+```
+POST /v1/age-verification
+```
+
+Creates a new age verification session and optionally sends email and SMS invitations to the applicant. The session URL directs the applicant to the chosen verification method.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
+
+### Body parameters
+
+Both camelCase and snake_case parameter names are accepted.
+
+| Parameter           | Alias             | Type    | Required | Description                                                                                                 |
+| ------------------- | ----------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `first_name`        | `firstName`       | string  | Yes      | Applicant's first name                                                                                      |
+| `last_name`         | `lastName`        | string  | Yes      | Applicant's last name                                                                                       |
+| `email`             | ---               | string  | Yes      | Applicant's email address                                                                                   |
+| `phone`             | ---               | string  | Yes      | Phone number in E.164 format (e.g. `+15192223333`)                                                          |
+| `method`            | ---               | string  | Yes      | Verification method: `credit-card` or `quiz`                                                                |
+| `external_id`       | `externalId`      | string  | No       | Your internal reference ID                                                                                  |
+| `send_email_invite` | `sendEmailInvite` | boolean | No       | Send an email invitation. Defaults to `true`                                                                |
+| `send_phone_invite` | `sendPhoneInvite` | boolean | No       | Send an SMS invitation. Defaults to `true`                                                                  |
+| `redirect_url`      | `redirectUrl`     | string  | No       | HTTPS URL to redirect after verification. Must use HTTPS                                                    |
+| `expires_in_hours`  | `expiresInHours`  | integer | No       | Auto-expire after this many hours (1-8760)                                                                  |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/age-verification \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "email": "jane@example.com",
+    "phone": "+15192223333",
+    "method": "quiz"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.deepidv.com/v1/age-verification", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "YOUR_API_KEY",
+  },
+  body: JSON.stringify({
+    first_name: "Jane",
+    last_name: "Smith",
+    email: "jane@example.com",
+    phone: "+15192223333",
+    method: "quiz",
+  }),
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.deepidv.com/v1/age-verification",
+    headers={"x-api-key": "YOUR_API_KEY"},
+    json={
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "email": "jane@example.com",
+        "phone": "+15192223333",
+        "method": "quiz",
+    },
+)
+```
+</CodeGroup>
+
+## Response
+
+### 200 --- Success
+
+| Field          | Type   | Description                                         |
+| -------------- | ------ | --------------------------------------------------- |
+| `id`           | string | Session ID                                          |
+| `session_url`  | string | URL for the applicant to complete verification      |
+| `method`       | string | Resolved method (`intel-quiz` or `credit-card`)     |
+| `external_id`  | string | Your reference ID (if provided)                     |
+| `expires_at`   | string | ISO 8601 expiration timestamp (if configured)       |
+| `links`        | array  | HATEOAS links to admin console and session details  |
+
+### Error responses
+
+| Status | Description                                       |
+| ------ | ------------------------------------------------- |
+| `400`  | Invalid body or missing required fields           |
+| `401`  | Missing or invalid `x-api-key`                    |
+| `402`  | Insufficient token balance                        |
+| `404`  | Organization not found                            |
+
+<ResponseExample>
+```json 200
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "session_url": "https://verify.deepidv.com/age/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "method": "intel-quiz",
+  "expires_at": "2026-05-16T11:00:00.000Z",
+  "links": [
+    {
+      "rel": "admin_console",
+      "href": "https://app.deepidv.com/dashboard/session/a1b2c3d4-...",
+      "description": "View this session in your DeepIDV admin console"
+    },
+    {
+      "rel": "session_details",
+      "href": "https://api.deepidv.com/v1/sessions/a1b2c3d4-...",
+      "description": "Use this ref to fetch the session details"
+    }
+  ]
+}
+```
+</ResponseExample>

@@ -1,0 +1,143 @@
+---
+title: Age Verification
+description: Token-based age verification with jurisdiction-aware compliance, parental consent, and platform-defined boundary controls
+---
+
+DeepIDV Age Verification lets platforms verify a user's age and — for minors — collect parental consent with configurable boundary controls. The system adapts automatically to the user's jurisdiction, applying the correct consent age, allowed verification methods, and regulatory requirements for 101+ countries.
+
+## How it works
+
+<Steps>
+  <Step title="Create a session">
+    Call `POST /v1/age-verification` with the applicant's details and your preferred verification method (`quiz`, `credit-card`, or `parent-connect`).
+  </Step>
+  <Step title="Applicant verifies">
+    The applicant opens the session URL and completes the chosen method — an adaptive knowledge quiz, a credit card check, or a facial age estimation.
+  </Step>
+  <Step title="Jurisdiction auto-detected">
+    The system detects the applicant's country via IP geolocation and applies the local consent age floor. For example, a UK user gets a 13+ threshold (AADC), while an Indian user gets 18+ (DPDP Act).
+  </Step>
+  <Step title="Attestation minted">
+    On verification, an on-chain attestation is minted with the age band, consent flags, and a 180-day expiry for minors (365 days for adults).
+  </Step>
+</Steps>
+
+## Verification methods
+
+| Method | How it works | Best for |
+| --- | --- | --- |
+| `quiz` | Adaptive knowledge-based questions calibrated to age bands | General purpose, low friction |
+| `credit-card` | Stripe $0 auth + cardholder name match | 18+ gating where card ownership proves age |
+| `parent-connect` | Parent/guardian verifies and sets boundary controls on behalf of a minor | Minors who need parental consent (COPPA, GDPR Art. 8, DPDP) |
+
+## Parent Connect
+
+When a user is under the platform's minimum age, Parent Connect lets a parent or guardian verify their own identity and grant consent with configurable boundaries.
+
+<Steps>
+  <Step title="Initiate">
+    Call `POST /v1/age-verification/parent-connect` with the child's details and your platform's `boundary_options` — the feature restrictions, content restrictions, and EULA the parent will review.
+  </Step>
+  <Step title="Invite parent">
+    Call `POST /v1/age-verification/parent-connect/{id}/invite` to send the parent an SMS, email, or WhatsApp link.
+  </Step>
+  <Step title="Parent verifies">
+    The parent opens the link and completes standard DeepIDV identity verification (ID scan, liveness, or card check).
+  </Step>
+  <Step title="Parent sets boundaries">
+    After verification, the parent sees a consent dashboard with your platform's boundary options — toggles, dropdowns, time limits — and accepts the EULA on behalf of the child.
+  </Step>
+  <Step title="Attestation + webhook">
+    The child's session is marked VERIFIED, triggering an on-chain attestation mint. Your platform receives a `parent_connect.consent_given` webhook with the boundary configuration.
+  </Step>
+</Steps>
+
+### Boundary options
+
+Platforms define what boundaries are available. DeepIDV renders them as a dynamic form for the parent and stores the choices in the attestation.
+
+```json Example boundary_options
+{
+  "eula_acceptance": {
+    "required": true,
+    "eula_url": "https://yourapp.com/terms"
+  },
+  "feature_restrictions": [
+    { "key": "in_game_purchases", "label": "In-Game Purchases", "type": "toggle", "default": false },
+    { "key": "voice_chat", "label": "Voice Chat", "type": "toggle", "default": false },
+    { "key": "friend_requests", "label": "Friend Requests", "type": "select", "options": ["anyone", "friends_of_friends", "nobody"], "default": "nobody" },
+    { "key": "daily_time_limit", "label": "Daily Time Limit", "type": "minutes", "default": 60, "min": 15, "max": 480 }
+  ],
+  "content_restrictions": [
+    { "key": "mature_content", "label": "Mature Content", "type": "toggle", "default": false },
+    { "key": "user_generated_content", "label": "User-Generated Content", "type": "toggle", "default": true }
+  ]
+}
+```
+
+Supported boundary types:
+
+| Type | Renders as | Value type |
+| --- | --- | --- |
+| `toggle` | Checkbox | `boolean` |
+| `number` | Number input with min/max | `number` |
+| `minutes` | Number input (step 15) | `number` |
+| `select` | Dropdown | `string` (from `options` array) |
+
+## Jurisdiction-aware compliance
+
+The system maps 101+ countries to their age verification regulations and automatically adapts the flow:
+
+| Jurisdiction | Compliance mode | Consent age | Key behavior |
+| --- | --- | --- | --- |
+| UK | `aadc` | 13 | Online Safety Act — "highly effective" AV required |
+| EU (27 states) | Per-state GDPR | 13-16 | GDPR Article 8 digital consent age varies by state |
+| Australia | `smma` | 16 | Outright ban for under-16 (no parental consent option) |
+| United States | `coppa` | 13 | COPPA parental consent for under-13 |
+| India | `dpdp` | 18 | Broadest scope — all under-18 need parental consent |
+| France | `sren` | 15 | Facial recognition banned for age verification |
+| Brazil | `lgpd` | 12 | Parental consent 12-18 for app downloads |
+
+Use `GET /v1/regulations/{country_code}` to look up the regulatory config for any country, or `GET /v1/regulations` to list all 101+ mapped jurisdictions.
+
+<Tip>
+  The jurisdiction is auto-detected from the user's IP address. You can also pass the country explicitly when creating the session. The system always applies the **stricter** of the jurisdiction minimum and your workflow's configured age threshold.
+</Tip>
+
+## Attestation lifecycle
+
+- **Minor attestations** expire after **180 days**, requiring re-consent
+- **Adult attestations** expire after **365 days**
+- Attestations are minted on-chain via the DeepIDV chain-mint pipeline
+- Each attestation includes: age band, parental consent flag, parent attestation reference, and boundary configuration
+- Parents can update boundaries post-consent via `PUT /v1/age-verification/parent-connect/boundaries/{attestation_id}` without re-verifying
+
+## Webhooks
+
+Subscribe to these events in your [webhook configuration](/webhooks/overview):
+
+| Event | Fired when |
+| --- | --- |
+| `session.status.verified` | Age verification session completed successfully |
+| `parent_connect.initiated` | Parent Connect flow started |
+| `parent_connect.consent_given` | Parent submitted consent with boundaries |
+| `parent_connect.boundaries_updated` | Parent updated boundary settings |
+
+The `parent_connect.consent_given` webhook payload includes the full `boundaries` object so your platform can enforce restrictions immediately.
+
+## API reference
+
+<CardGroup cols={2}>
+  <Card title="Create Age Verification" icon="plus" href="/api-reference/age-verification/create-age-verification">
+    Create a new age verification session
+  </Card>
+  <Card title="Parent Connect" icon="user-plus" href="/api-reference/age-verification/parent-connect">
+    Initiate parental consent flow
+  </Card>
+  <Card title="Get Regulations" icon="building-columns" href="/api-reference/age-verification/get-regulations">
+    Look up regulatory config by country
+  </Card>
+  <Card title="Get Boundaries" icon="shield-check" href="/api-reference/age-verification/get-boundaries">
+    Query boundary settings by attestation
+  </Card>
+</CardGroup>
