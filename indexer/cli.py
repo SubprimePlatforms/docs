@@ -12,7 +12,7 @@ from .chunker import chunk_text
 from .diff import compute_diff
 from .embedder import Embedder
 from .manifest import build_manifest
-from .models import DEFAULT_NAMESPACE, ManifestPage, PageStatus
+from .models import DEFAULT_NAMESPACE, SOURCE_OPENAPI, ManifestPage, PageStatus
 from .normalizer import extract_frontmatter, normalize
 from .pinecone_store import PineconeStore
 from .verifier import verify
@@ -40,11 +40,15 @@ def _index_page(
     store: PineconeStore,
     embedder: Embedder,
     namespace: str,
+    openapi_text_cache: dict[str, str] | None = None,
 ) -> int:
-    mdx_path = docs_root / page.path
-    raw = mdx_path.read_text(encoding="utf-8")
-    _frontmatter, body = extract_frontmatter(raw)
-    normalized = normalize(body)
+    if page.source == SOURCE_OPENAPI:
+        normalized = openapi_text_cache.get(page.doc_id, "") if openapi_text_cache else ""
+    else:
+        mdx_path = docs_root / page.path
+        raw = mdx_path.read_text(encoding="utf-8")
+        _frontmatter, body = extract_frontmatter(raw)
+        normalized = normalize(body)
 
     chunks = chunk_text(
         text=normalized,
@@ -56,6 +60,8 @@ def _index_page(
         description=page.description,
         content_hash=page.content_hash,
         commit_sha=commit_sha,
+        source=page.source,
+        method=page.method,
     )
 
     if not chunks:
@@ -74,6 +80,7 @@ def run(
     index_name: str,
     namespace: str = DEFAULT_NAMESPACE,
     skip_verify: bool = False,
+    openapi_spec_path: str | None = None,
 ) -> int:
     commit_sha = _get_commit_sha()
     start = time.monotonic()
@@ -82,10 +89,19 @@ def run(
     store = PineconeStore(api_key=api_key, index_name=index_name)
     embedder = Embedder(api_key=api_key)
 
-    current_manifest = build_manifest(docs_root, commit_sha, namespace)
+    current_manifest = build_manifest(
+        docs_root, commit_sha, namespace, openapi_spec_path=openapi_spec_path
+    )
     logger.info(
         "Built manifest: %d pages commit=%s", len(current_manifest.pages), commit_sha
     )
+
+    openapi_text_cache: dict[str, str] = {}
+    if openapi_spec_path:
+        from .openapi_normalizer import parse_spec
+        for op in parse_spec(openapi_spec_path):
+            openapi_text_cache[op.doc_id] = op.text
+        logger.info("Parsed OpenAPI spec: %d operations", len(openapi_text_cache))
 
     previous_manifest = store.fetch_manifest(namespace)
     if previous_manifest:
@@ -123,7 +139,7 @@ def run(
     total_chunks = 0
 
     for page in pages_to_index:
-        n = _index_page(page, docs_root, commit_sha, store, embedder, namespace)
+        n = _index_page(page, docs_root, commit_sha, store, embedder, namespace, openapi_text_cache)
         total_chunks += n
         logger.info("Indexed %s: %d chunks", page.doc_id, n)
 
@@ -166,6 +182,7 @@ def main() -> None:
     )
     parser.add_argument("--namespace", default=DEFAULT_NAMESPACE)
     parser.add_argument("--skip-verify", action="store_true")
+    parser.add_argument("--openapi-spec", default=None, help="Path to OpenAPI YAML spec file")
     parser.add_argument("--api-key", default=os.environ.get("PINECONE_API_KEY", ""))
     parser.add_argument("--index-name", default=os.environ.get("PINECONE_INDEX_NAME", ""))
 
@@ -184,6 +201,7 @@ def main() -> None:
         index_name=args.index_name,
         namespace=args.namespace,
         skip_verify=args.skip_verify,
+        openapi_spec_path=args.openapi_spec,
     )
     sys.exit(rc)
 

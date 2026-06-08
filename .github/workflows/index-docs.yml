@@ -37,6 +37,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout OpenAPI spec
+        uses: actions/checkout@v4
+        with:
+          repository: Deep-Identity-Inc/deepidv-open-api
+          path: _openapi
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -58,6 +65,7 @@ jobs:
         run: |
           python -m indexer.cli \
             --docs-root . \
+            --openapi-spec _openapi/infrastructure/ec2/open-api/openapi.yaml \
             --namespace deepidv-docs
 
       - name: Indexing failed

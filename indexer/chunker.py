@@ -50,6 +50,8 @@ def chunk_text(
     description: str,
     content_hash: str,
     commit_sha: str,
+    source: str = "deepidv-docs",
+    method: str = "",
 ) -> list[ChunkRecord]:
     enc = tiktoken.get_encoding(_ENCODER_NAME)
     sections = _split_by_headings(text)
@@ -97,6 +99,8 @@ def chunk_text(
                 section=heading,
                 chunk_index=idx,
                 text=prefixed,
+                source=source,
+                method=method,
             )
         )
 

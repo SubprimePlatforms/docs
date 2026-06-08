@@ -6,6 +6,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+MANIFEST_DOC_ID = "__manifest__"
+MANIFEST_CHUNK_ID = "__manifest__:0000"
+SOURCE = "deepidv-docs"
+SOURCE_OPENAPI = "deepidv-openapi"
+DEFAULT_NAMESPACE = "deepidv-docs"
+BASE_URL = "https://docs.deepidv.com"
+API_BASE_URL = "https://api.deepidv.com"
+
+
 class PageStatus(str, Enum):
     NEW = "new"
     MODIFIED = "modified"
@@ -22,6 +31,8 @@ class ManifestPage(BaseModel):
     title: str
     description: str
     content_hash: str
+    source: str = SOURCE
+    method: str = ""
     status: PageStatus = PageStatus.INDEXED
     chunk_count: int = 0
     tags: list[str] = Field(default_factory=list)
@@ -55,6 +66,8 @@ class ChunkRecord(BaseModel):
     section: str
     chunk_index: int
     text: str
+    source: str = SOURCE
+    method: str = ""
 
 
 class DiffResult(BaseModel):
@@ -66,10 +79,3 @@ class DiffResult(BaseModel):
     @property
     def has_changes(self) -> bool:
         return bool(self.new or self.modified or self.removed)
-
-
-MANIFEST_DOC_ID = "__manifest__"
-MANIFEST_CHUNK_ID = "__manifest__:0000"
-SOURCE = "deepidv-docs"
-DEFAULT_NAMESPACE = "deepidv-docs"
-BASE_URL = "https://docs.deepidv.com"

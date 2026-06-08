@@ -39,7 +39,7 @@ class Embedder:
                     "id": chunk.chunk_id,
                     "values": embedding,
                     "metadata": {
-                        "source": "deepidv-docs",
+                        "source": chunk.source,
                         "doc_id": chunk.doc_id,
                         "chunk_id": chunk.chunk_id,
                         "path": chunk.path,
@@ -52,6 +52,7 @@ class Embedder:
                         "section": chunk.section,
                         "chunk_index": chunk.chunk_index,
                         "text": chunk.text,
+                        **({"method": chunk.method} if chunk.method else {}),
                     },
                 }
             )
