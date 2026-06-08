@@ -21,7 +21,7 @@ jobs:
         with:
           repository: Deep-Identity-Inc/deepidv-open-api
           path: _openapi
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.OPENAPI_SYNC_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
