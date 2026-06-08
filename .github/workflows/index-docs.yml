@@ -11,28 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.filter.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: filter
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git diff --name-only HEAD~1 HEAD > /tmp/changed.txt
-          if grep -qE '\.mdx$|docs\.json$|indexer/|\.github/workflows/index-docs\.yml$' /tmp/changed.txt; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
   index:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
