@@ -1,0 +1,65 @@
+---
+title: Proof Bundles
+description: Downloadable .dpiv archives that verify one attestation end-to-end, offline
+---
+
+> A proof bundle is a downloadable archive (`.dpiv` extension) containing everything needed to verify one attestation offline.
+
+## What's inside a `.dpiv` file
+
+A proof bundle is a ZIP archive (with a custom `.dpiv` extension):
+
+```
+attestation.dpiv
+├── envelope.json        # The canonical envelope JSON
+├── envelope.hash        # SHA-256 of envelope.json (canonicalized)
+├── issuer.pem           # The issuer's public key
+├── issuer.sig           # The issuer signature over envelope.hash
+├── tsa-digicert.tsr     # RFC 3161 timestamp token from DigiCert
+├── tsa-sectigo.tsr      # RFC 3161 timestamp token from Sectigo
+├── inclusion.json       # Merkle inclusion proof (audit path)
+├── sth.json             # The signed tree head
+├── master.pem           # The chain-master public key
+├── master.sig           # Master signature over sth.json
+├── onchain.json         # Base L2 anchor metadata (if onchain mode)
+├── verify.sh            # POSIX-sh verification script
+├── README.md            # Human-readable explanation
+└── manifest.sha256sum   # SHA-256 of every file above
+```
+
+## How to download
+
+From any attestation detail page on the explorer, click **Download bundle**. The file streams as `{attestation_id}.dpiv`.
+
+Programmatically:
+
+```bash
+curl -L -o attestation.dpiv \
+  https://api.deepidv.com/v1/bundle/{attestation_id}
+```
+
+## How to verify
+
+The bundle includes a POSIX shell script, `verify.sh`, that runs every check end to end. No internet connection required after download.
+
+```bash
+# Unzip the bundle
+unzip attestation.dpiv -d ./bundle
+
+# Run the verifier
+cd bundle && ./verify.sh
+
+# Output:
+# [OK] Envelope hash matches
+# [OK] Issuer signature valid
+# [OK] TSA tokens valid (DigiCert + Sectigo)
+# [OK] Merkle inclusion proof valid
+# [OK] Master STH signature valid
+# [OK] On-chain anchor present (tx 0x...)
+#
+# Bundle verified.
+```
+
+`verify.sh` uses only POSIX-standard tools (`openssl`, `sha256sum`, `jq`, `xxd`). It works on any Linux, macOS, or BSD system with these utilities installed.
+
+For programmatic verification, see the [SDKs](/chain-layer/sdks).
