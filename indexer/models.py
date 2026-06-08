@@ -7,8 +7,9 @@ from pydantic import BaseModel, Field
 
 
 MANIFEST_DOC_ID = "__manifest__"
-MANIFEST_CHUNK_ID = "__manifest__:0000"
+MANIFEST_CHUNK_PREFIX = "__manifest__"
 SOURCE = "deepidv-docs"
+MANIFEST_SHARD_SIZE = 10
 SOURCE_OPENAPI = "deepidv-openapi"
 DEFAULT_NAMESPACE = "deepidv-docs"
 BASE_URL = "https://docs.deepidv.com"
