@@ -1,0 +1,34 @@
+<svg width="256" height="256" viewBox="44 8 134 142" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#favicon_filter0)">
+<path d="M49.9617 19.534C49.9617 13.4434 56.6681 9.73644 61.8255 12.9763L102.185 38.3307C107.193 41.4762 113.554 41.4963 118.581 38.3825L159.806 12.8464C164.965 9.65077 171.628 13.3614 171.628 19.43V77.1623C171.628 100.203 159.44 121.525 139.586 133.217L118.654 145.543C113.804 148.4 107.786 148.4 102.936 145.543L82.0036 133.217C62.1497 121.525 49.9617 100.203 49.9617 77.1624V19.534Z" fill="url(#favicon_paint0)"/>
+</g>
+<mask id="favicon_mask0" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="49" y="11" width="123" height="137">
+<path d="M49.9617 19.534C49.9617 13.4434 56.6681 9.73644 61.8255 12.9763L102.185 38.3307C107.193 41.4762 113.554 41.4963 118.581 38.3825L159.806 12.8464C164.965 9.65077 171.628 13.3614 171.628 19.43V77.1623C171.628 100.203 159.44 121.525 139.586 133.217L118.654 145.543C113.804 148.4 107.786 148.4 102.936 145.543L82.0036 133.217C62.1497 121.525 49.9617 100.203 49.9617 77.1624V19.534Z" fill="url(#favicon_paint1)"/>
+</mask>
+<g mask="url(#favicon_mask0)">
+<path d="M114.685 81.68C112.487 84.2991 108.457 84.2991 106.259 81.68L50.7977 15.5982C46.8298 10.8704 52.4612 4.19776 57.7885 7.31481L107.694 36.5151C109.41 37.519 111.534 37.519 113.25 36.5151L163.156 7.31481C168.483 4.19775 174.114 10.8704 170.146 15.5982L114.685 81.68Z" fill="url(#favicon_paint3)"/>
+<path d="M114.685 81.68C112.487 84.2991 108.457 84.2991 106.259 81.68L50.7977 15.5982C46.8298 10.8704 52.4612 4.19776 57.7885 7.31481L107.694 36.5151C109.41 37.519 111.534 37.519 113.25 36.5151L163.156 7.31481C168.483 4.19775 174.114 10.8704 170.146 15.5982L114.685 81.68Z" fill="url(#favicon_paint4)"/>
+</g>
+<defs>
+<filter id="favicon_filter0" x="45" y="7" width="131" height="146" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+</filter>
+<linearGradient id="favicon_paint0" x1="171.628" y1="77.8475" x2="49.9617" y2="77.8475" gradientUnits="userSpaceOnUse">
+<stop offset="0.466346" stop-color="#0073FF"/>
+<stop offset="0.533654" stop-color="#4AB9FF"/>
+</linearGradient>
+<linearGradient id="favicon_paint1" x1="171.628" y1="77.8475" x2="49.9617" y2="77.8475" gradientUnits="userSpaceOnUse">
+<stop offset="0.466346" stop-color="#0073FF"/>
+<stop offset="0.533654" stop-color="#0DA2FF"/>
+</linearGradient>
+<linearGradient id="favicon_paint3" x1="140.977" y1="83.6449" x2="140.977" y2="6.51469" gradientUnits="userSpaceOnUse">
+<stop stop-color="#62C2FF"/>
+<stop offset="1" stop-color="#0DA2FF"/>
+</linearGradient>
+<linearGradient id="favicon_paint4" x1="171.482" y1="45.0795" x2="49.4622" y2="45.0795" gradientUnits="userSpaceOnUse">
+<stop offset="0.466346" stop-color="#4AB9FF"/>
+<stop offset="0.533654" stop-color="#0073FF"/>
+</linearGradient>
+</defs>
+</svg>

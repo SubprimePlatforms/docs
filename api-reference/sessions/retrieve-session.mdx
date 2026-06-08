@@ -101,6 +101,25 @@ response = requests.get(
 | `applicantSubmissionDevice` | string | Device used for submission |
 | `applicantViewTime` | string | ISO 8601 timestamp when the applicant viewed the verification page |
 | `applicantSubmissionBrowser` | string | Browser used for submission |
+| `applicantSubmissionLocation` | string | Human-readable submission location (typically `"City, Country"` when available) |
+| `applicantSubmissionLocationDetails` | object | Structured geo lookup of the submission IP (see below) |
+
+### `applicantSubmissionLocationDetails` object
+
+Derived from a geo lookup of the submission IP. All fields are optional — any field may be absent if the lookup could not resolve it.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `accuracyRadius` | number | Radius (km) of confidence around the resolved coordinates |
+| `city` | string | City name |
+| `continent` | string | Continent name |
+| `country` | string | Country name |
+| `countryIsoCode` | string | ISO 3166-1 alpha-2 country code |
+| `latitude` | number | Latitude of the resolved location |
+| `longitude` | number | Longitude of the resolved location |
+| `postalCode` | string | Postal/ZIP code |
+| `subdivision` | string | State, province, or other primary subdivision |
+| `timeZone` | string | IANA timezone identifier (e.g. `"America/Chicago"`) |
 
 ### `analysis_data` object
 
@@ -214,7 +233,18 @@ Both `user` (the applicant) and `sender_user` (the session creator) share the sa
       "applicantSubmissionIp": "192.168.1.1, 10.0.0.1",
       "applicantSubmissionDevice": "Mac",
       "applicantViewTime": "2025-01-15T10:35:00.000Z",
-      "applicantSubmissionBrowser": "Safari"
+      "applicantSubmissionBrowser": "Safari",
+      "applicantSubmissionLocation": "Chicago, United States",
+      "applicantSubmissionLocationDetails": {
+        "accuracyRadius": 500,
+        "continent": "North America",
+        "country": "United States",
+        "countryIsoCode": "US",
+        "latitude": 41.8483,
+        "longitude": -87.6517,
+        "subdivision": "Illinois",
+        "timeZone": "America/Chicago"
+      }
     },
     "uploads": {
       "id_front": true,

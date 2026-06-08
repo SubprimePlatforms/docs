@@ -1,0 +1,197 @@
+---
+title: Verify Identity
+description: Run document scan, face detect, and face compare in a single call
+api: POST /v1/identity/verify
+---
+
+```
+POST /v1/identity/verify
+```
+
+Submit one document image and one selfie image. The endpoint runs [`/v1/document/scan`](/api-reference/server-to-server/document-scan), [`/v1/face/detect`](/api-reference/server-to-server/face-detect) on the selfie, and [`/v1/face/compare`](/api-reference/server-to-server/face-compare) between the document photo and the selfie — **in parallel** — and returns a single aggregated response with an `overallConfidence` score.
+
+Use this when you have both images already and want one round-trip instead of orchestrating three calls yourself. If you only have one of the two images, call the individual endpoints directly.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description                                 |
+| -------------- | -------- | ------------------------------------------- |
+| `x-api-key`    | Yes      | Your API key                                |
+| `Content-Type` | Yes      | `multipart/form-data` or `application/json` |
+
+### Body parameters
+
+| Parameter       | Type             | Required | Description                                                                              |
+| --------------- | ---------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `documentImage` | binary \| string | Yes      | Image of the document. Multipart file part or JSON base64/base64url/S3-key string.       |
+| `faceImage`     | binary \| string | Yes      | Selfie image. Same input rules as `documentImage`.                                       |
+| `documentType`  | string           | No       | One of `passport`, `drivers_license`, `national_id`, `auto`. Defaults to `auto`.         |
+
+You can mix input modes — for example, send `documentImage` as a JSON S3 key (from an earlier presigned upload) and `faceImage` as fresh multipart bytes. See the [overview](/api-reference/server-to-server/overview#image-inputs) for the shared image rules.
+
+### Example request
+
+<CodeGroup>
+```bash cURL (multipart)
+curl -X POST https://api.deepidv.com/v1/identity/verify \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "documentImage=@/path/to/id.jpg" \
+  -F "faceImage=@/path/to/selfie.jpg" \
+  -F "documentType=drivers_license"
+```
+
+```bash cURL (JSON)
+curl -X POST https://api.deepidv.com/v1/identity/verify \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "documentImage": "uploads/id-abc123.jpg",
+    "faceImage": "uploads/selfie-xyz.jpg",
+    "documentType": "drivers_license"
+  }'
+```
+
+```javascript Node.js
+import fs from "node:fs";
+
+const form = new FormData();
+form.append(
+  "documentImage",
+  new Blob([fs.readFileSync("/path/to/id.jpg")]),
+  "id.jpg",
+);
+form.append(
+  "faceImage",
+  new Blob([fs.readFileSync("/path/to/selfie.jpg")]),
+  "selfie.jpg",
+);
+form.append("documentType", "drivers_license");
+
+const response = await fetch("https://api.deepidv.com/v1/identity/verify", {
+  method: "POST",
+  headers: { "x-api-key": "YOUR_API_KEY" },
+  body: form,
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+with open("/path/to/id.jpg", "rb") as doc, open("/path/to/selfie.jpg", "rb") as face:
+    response = requests.post(
+        "https://api.deepidv.com/v1/identity/verify",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"documentImage": doc, "faceImage": face},
+        data={"documentType": "drivers_license"},
+    )
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+All confidence and threshold values on this response are reported on a **0–100** scale.
+
+| Field               | Type    | Description                                                                       |
+| ------------------- | ------- | --------------------------------------------------------------------------------- |
+| `verified`          | boolean | Overall pass/fail derived from the three sub-results                              |
+| `document`          | object  | Subset of [`/v1/document/scan`](/api-reference/server-to-server/document-scan) response |
+| `faceDetection`     | object  | Result of [`/v1/face/detect`](/api-reference/server-to-server/face-detect) on the selfie |
+| `faceMatch`         | object  | Comparison between document photo and selfie                                      |
+| `overallConfidence` | number (0–100) | Weighted aggregate confidence across all three sub-results                 |
+
+#### `document`
+
+| Field            | Type           | Description                                          |
+| ---------------- | -------------- | ---------------------------------------------------- |
+| `documentType`   | string         | Normalized document type                             |
+| `fullName`       | string         | Full name as printed on the document                 |
+| `firstName`      | string         | First name                                           |
+| `lastName`       | string         | Last name                                            |
+| `dateOfBirth`    | string         | Date of birth                                        |
+| `gender`         | string         | Gender                                               |
+| `nationality`    | string         | Nationality                                          |
+| `documentNumber` | string         | Document number                                      |
+| `expirationDate` | string         | Document expiration date                             |
+| `issuingCountry` | string         | Issuing country                                      |
+| `address`        | string         | Address (when present)                               |
+| `confidence`     | number (0–100) | Average document-extraction confidence               |
+
+#### `faceDetection`
+
+| Field          | Type           | Description                                       |
+| -------------- | -------------- | ------------------------------------------------- |
+| `faceDetected` | boolean        | True when a face was detected in the selfie       |
+| `confidence`   | number (0–100) | Detection confidence for the top face             |
+
+#### `faceMatch`
+
+| Field        | Type           | Description                                       |
+| ------------ | -------------- | ------------------------------------------------- |
+| `isMatch`    | boolean        | True when `confidence >= threshold`               |
+| `confidence` | number (0–100) | Best face-match similarity                        |
+| `threshold`  | number (0–100) | Match threshold                                   |
+
+### Error responses
+
+| Status | Description                                                                  |
+| ------ | ---------------------------------------------------------------------------- |
+| `400`  | Invalid body, unsupported image format, or image larger than 15 MB           |
+| `401`  | Missing or invalid `x-api-key`                                               |
+| `402`  | Insufficient token balance                                                   |
+| `403`  | A supplied S3 key is not readable by this organization                       |
+| `429`  | Rate limit exceeded                                                          |
+| `500`  | Unexpected server error — safe to retry with backoff                         |
+
+<ResponseExample>
+```json 200
+{
+  "verified": true,
+  "document": {
+    "documentType": "drivers_license",
+    "fullName": "JANE Q PUBLIC",
+    "firstName": "JANE",
+    "lastName": "PUBLIC",
+    "dateOfBirth": "1990-04-12",
+    "gender": "F",
+    "nationality": "USA",
+    "documentNumber": "D1234567",
+    "expirationDate": "2030-04-12",
+    "issuingCountry": "USA",
+    "address": "123 MAIN ST, SPRINGFIELD, IL 62701",
+    "confidence": 97
+  },
+  "faceDetection": {
+    "faceDetected": true,
+    "confidence": 99
+  },
+  "faceMatch": {
+    "isMatch": true,
+    "confidence": 96.4,
+    "threshold": 80
+  },
+  "overallConfidence": 95
+}
+```
+</ResponseExample>
+
+## How `overallConfidence` is calculated
+
+`overallConfidence` is a fixed weighted blend of the three sub-results:
+
+| Component                                        | Weight |
+| ------------------------------------------------ | ------ |
+| Document extraction confidence                   | 0.4    |
+| Face-detection confidence (selfie)               | 0.2    |
+| Face-match confidence (document photo vs selfie) | 0.4    |
+
+The weights are fixed today. If you need to apply your own policy on top of the individual signals, use the per-block fields and ignore `overallConfidence`.
+
+## Partial failures
+
+The three sub-calls run in parallel and are independent. If one fails (for example, no face detected in the selfie), the others still run and the corresponding block reports the failure in-band rather than 4xx-ing the whole request. Always inspect each block before acting on `overallConfidence`.

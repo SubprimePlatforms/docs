@@ -63,7 +63,7 @@ The `data` field contains the full session object. This is the same structure re
 | `workflow_id` | string | Workflow ID used for this session |
 | `workflow_steps` | string[] | List of workflow step IDs |
 | `uploads` | object | Boolean flags for each uploaded document type |
-| `meta_data` | object | Applicant submission metadata (IP, device, browser) |
+| `meta_data` | object | Applicant submission metadata (IP, device, browser, location) |
 | `analysis_data` | object | Verification analysis results |
 
 ### `analysis_data` object
@@ -85,7 +85,7 @@ Included when the session has been processed. Contains the full verification ana
 | `custom_form_data` | array | Custom form question/answer entries |
 
 <Info>
-For a full breakdown of all nested fields within `analysis_data`, see the [Retrieve Session](/api-reference/sessions/retrieve-session) API reference.
+For a full breakdown of all nested fields within `analysis_data` and `meta_data`, see the [Retrieve Session](/api-reference/sessions/retrieve-session) API reference.
 </Info>
 
 ## Example payloads
@@ -147,7 +147,18 @@ Sent when an applicant completes and submits their verification session. The `an
       "applicantSubmissionIp": "192.168.1.1",
       "applicantSubmissionDevice": "Mac",
       "applicantSubmissionBrowser": "Chrome",
-      "applicantViewTime": "2026-03-23T14:30:05.000Z"
+      "applicantViewTime": "2026-03-23T14:30:05.000Z",
+      "applicantSubmissionLocation": "Chicago, United States",
+      "applicantSubmissionLocationDetails": {
+        "accuracyRadius": 500,
+        "continent": "North America",
+        "country": "United States",
+        "countryIsoCode": "US",
+        "latitude": 41.8483,
+        "longitude": -87.6517,
+        "subdivision": "Illinois",
+        "timeZone": "America/Chicago"
+      }
     },
     "analysis_data": {
       "created_at": "2026-03-23T14:35:00.000Z",

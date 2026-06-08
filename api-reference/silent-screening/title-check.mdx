@@ -1,10 +1,110 @@
 ---
 title: Title Check
 description: Look up property title records, ownership history, and lien data
+api: POST /v1/screening/title-check
 ---
 
-<Note>
-  This endpoint is **coming soon**. Silent screening APIs allow you to run compliance checks server-side without requiring applicant interaction.
-</Note>
+```
+POST /v1/screening/title-check
+```
 
-Look up property title records by address. Returns ownership history, last market sale information, transfer records, lien data, and detailed location information.
+Looks up property/title records for a US address via DataTree. Returns ownership history, last market sale information, transfer records, lien data, and detailed location information. The response is **discriminated on `status`**.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
+
+### Body parameters
+
+| Parameter | Type   | Required | Description                                |
+| --------- | ------ | -------- | ------------------------------------------ |
+| `address` | string | Yes      | US property address to look up (1–500 chars) |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/screening/title-check \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "address": "1600 Amphitheatre Parkway, Mountain View, CA 94043"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.deepidv.com/v1/screening/title-check", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "YOUR_API_KEY",
+  },
+  body: JSON.stringify({
+    address: "1600 Amphitheatre Parkway, Mountain View, CA 94043",
+  }),
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.deepidv.com/v1/screening/title-check",
+    headers={
+        "Content-Type": "application/json",
+        "x-api-key": "YOUR_API_KEY",
+    },
+    json={
+        "address": "1600 Amphitheatre Parkway, Mountain View, CA 94043",
+    },
+)
+```
+
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+The response is a discriminated union on the `status` field:
+
+| `status`                | Description                                                            |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `found`                 | A single property matched — includes `subjectProperty` detail          |
+| `multiple_properties`   | The address matched more than one property — disambiguation required   |
+| `unsupported_region`    | The address is outside the supported (US) coverage area                |
+| `not_found`             | No property/title record matched the address                           |
+
+When `status` is `found`, the `subjectProperty` object carries the property detail (APN, full address, city, state, ownership and sale history, lien data, and location fields).
+
+### Error responses
+
+| Status             | Description                               |
+| ------------------ | ----------------------------------------- |
+| `400 Bad Request`  | Request body failed schema validation     |
+| `401 Unauthorized` | API key is invalid                        |
+| `403 Forbidden`    | API key is missing or resource not in org |
+| `404 Not Found`    | Referenced resource was not found         |
+| `500 Server Error` | Unexpected server error                   |
+
+<ResponseExample>
+```json 200
+{
+  "status": "found",
+  "subjectProperty": {
+    "APNFormatted": "123-456-789",
+    "APNUnformatted": "123456789",
+    "PropertyFullStreetAddress": "1600 Amphitheatre Parkway",
+    "PropertyCity": "Mountain View",
+    "PropertyState": "CA"
+  }
+}
+```
+</ResponseExample>
