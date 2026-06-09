@@ -8,22 +8,16 @@ api: POST /v1/screening/title-check
 POST /v1/screening/title-check
 ```
 
-Starts an **asynchronous** property/title search for a US address via DataTree. Because the lookup chains several vendor calls, the request returns immediately with `202 Accepted` and a `jobId` — poll [`GET /v1/async-jobs/{jobId}`](/api-reference/async-jobs/get-async-job) to retrieve the result once it's ready.
-
-<Note>
-  This endpoint returns a job reference, **not** the title result. The result is
-  delivered through the async-jobs polling endpoint.
-</Note>
+Runs a property/title search for a US address via DataTree and returns the result synchronously. The endpoint geocodes the supplied address, resolves the matching property, and responds with a discriminated union describing the outcome.
 
 ## Request
 
 ### Headers
 
-| Header            | Required | Description                                                                                                       |
-| ----------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
-| `x-api-key`       | Yes      | Your API key                                                                                                      |
-| `Content-Type`    | Yes      | `application/json`                                                                                                |
-| `Idempotency-Key` | No       | Client-supplied key. Reusing a key returns the existing job (`200`) instead of queuing a new one — safe on retries |
+| Header         | Required | Description        |
+| -------------- | -------- | ------------------ |
+| `x-api-key`    | Yes      | Your API key       |
+| `Content-Type` | Yes      | `application/json` |
 
 ### Body parameters
 
@@ -41,7 +35,6 @@ Starts an **asynchronous** property/title search for a US address via DataTree. 
 curl -X POST https://api.deepidv.com/v1/screening/title-check \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -H "Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7" \
   -d '{
     "email": "applicant@example.com",
     "firstName": "John",
@@ -56,7 +49,6 @@ const response = await fetch("https://api.deepidv.com/v1/screening/title-check",
   headers: {
     "Content-Type": "application/json",
     "x-api-key": "YOUR_API_KEY",
-    "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
   },
   body: JSON.stringify({
     email: "applicant@example.com",
@@ -66,7 +58,7 @@ const response = await fetch("https://api.deepidv.com/v1/screening/title-check",
   }),
 });
 
-const { jobId } = await response.json();
+const data = await response.json();
 ```
 
 ```python Python
@@ -77,7 +69,6 @@ response = requests.post(
     headers={
         "Content-Type": "application/json",
         "x-api-key": "YOUR_API_KEY",
-        "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     },
     json={
         "email": "applicant@example.com",
@@ -87,28 +78,35 @@ response = requests.post(
     },
 )
 
-job_id = response.json()["jobId"]
+data = response.json()
 ```
 
 </CodeGroup>
 
-## Idempotency
-
-Supply an optional `Idempotency-Key` header to make retries safe. The first request with a given key queues the job and returns `202`. Any subsequent request with the **same key** returns `200` with the **existing** job reference instead of starting a duplicate search. Use a unique key (e.g. a UUID) per logical title check.
-
 ## Response
 
-### 202 — Accepted (new job queued)
+### 200 — Success
 
-### 200 — Existing job returned (reused `Idempotency-Key`)
+The body is a **discriminated union on `status`**:
 
-Both responses share the same body shape:
+| `status`              | Description                                                          |
+| --------------------- | -------------------------------------------------------------------- |
+| `found`               | A single property matched — includes the property detail fields      |
+| `multiple_properties` | The address matched more than one property — disambiguation required |
+| `unsupported_region`  | The address is outside the supported (US) coverage area              |
+| `not_found`           | No property/title record matched the address                         |
 
-| Field     | Type   | Description                                                         |
-| --------- | ------ | ------------------------------------------------------------------- |
-| `jobId`   | string | Identifier to poll for the result via `GET /v1/async-jobs/{jobId}` |
-| `status`  | string | Job status — one of `pending`, `processing`, `ready`, `failed`     |
-| `message` | string | Human-readable acknowledgement                                      |
+When `status` is `found`, the response carries the property detail. Each object is `null` when the underlying data is unavailable:
+
+| Field                       | Type          | Description                                                       |
+| --------------------------- | ------------- | ---------------------------------------------------------------- |
+| `subjectProperty`           | object \| null | APN, full address, city, state, zoning, lot/building size, etc.  |
+| `ownerInformation`          | object \| null | Owner names, mailing address, vesting/ownership rights           |
+| `locationInformation`       | object \| null | County, census tract/block, school district, flood zone          |
+| `ownerTransferInformation`  | object \| null | Most recent ownership transfer (document, date, deed type, price) |
+| `lastMarketSaleInformation` | object \| null | Last market sale (date, price, buyer, seller, deed type)         |
+
+When `status` is `multiple_properties`, the response includes `message`, an `availableUnits` array, and a `properties` array of `{ owner, apartmentOrUnit }` to disambiguate. When `status` is `unsupported_region` or `not_found`, the response includes a human-readable `message`.
 
 ### Error responses
 
@@ -121,24 +119,34 @@ Both responses share the same body shape:
 | `500 Server Error` | Unexpected server error                   |
 
 <ResponseExample>
-```json 202
+```json 200 (found)
 {
-  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "status": "pending",
-  "message": "Title check has been queued. Poll GET /v1/async-jobs/{jobId} for results."
+  "status": "found",
+  "subjectProperty": {
+    "APNFormatted": "123-456-789",
+    "PropertyFullStreetAddress": "1600 Amphitheatre Pkwy",
+    "PropertyCity": "Mountain View",
+    "PropertyState": "CA",
+    "PropertyZipCode": "94043",
+    "PropertyCounty": "Santa Clara",
+    "YearBuilt": 1998
+  },
+  "ownerInformation": {
+    "Owner1LastName": "Doe",
+    "Owner1FirstNameMiddleInitial": "John",
+    "MailingCity": "Mountain View",
+    "MailingState": "CA"
+  },
+  "locationInformation": null,
+  "ownerTransferInformation": null,
+  "lastMarketSaleInformation": null
+}
+```
+
+```json 200 (not_found)
+{
+  "status": "not_found",
+  "message": "Could not resolve the provided address."
 }
 ```
 </ResponseExample>
-
-## Result shape
-
-Once the job reaches `ready`, the async-jobs endpoint returns the title result in its `result` field. The result is a **discriminated union on `status`**:
-
-| `status`              | Description                                                          |
-| --------------------- | -------------------------------------------------------------------- |
-| `found`               | A single property matched — includes `subjectProperty` detail        |
-| `multiple_properties` | The address matched more than one property — disambiguation required |
-| `unsupported_region`  | The address is outside the supported (US) coverage area              |
-| `not_found`           | No property/title record matched the address                         |
-
-When `status` is `found`, the `subjectProperty` object carries the property detail (APN, full address, city, state, ownership and sale history, lien data, and location fields).

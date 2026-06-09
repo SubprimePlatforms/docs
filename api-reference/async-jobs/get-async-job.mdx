@@ -8,7 +8,7 @@ api: GET /v1/async-jobs/{jobId}
 GET /v1/async-jobs/{jobId}
 ```
 
-Returns the current state of an async job. Endpoints that kick off long-running work — such as [adverse media screening](/api-reference/silent-screening/adverse-media) and [title check](/api-reference/silent-screening/title-check) — return a `jobId` immediately; poll this endpoint until the job reaches a terminal state (`ready` or `failed`). The `result` shape depends on which endpoint created the job.
+Returns the current state of an async job. Endpoints that kick off long-running work — such as [adverse media screening](/api-reference/silent-screening/adverse-media) — return a `jobId` immediately; poll this endpoint until the job reaches a terminal state (`ready` or `failed`). The `result` shape depends on which endpoint created the job.
 
 ## Job lifecycle
 
