@@ -8,22 +8,31 @@ api: POST /v1/screening/title-check
 POST /v1/screening/title-check
 ```
 
-Looks up property/title records for a US address via DataTree. Returns ownership history, last market sale information, transfer records, lien data, and detailed location information. The response is **discriminated on `status`**.
+Starts an **asynchronous** property/title search for a US address via DataTree. Because the lookup chains several vendor calls, the request returns immediately with `202 Accepted` and a `jobId` — poll [`GET /v1/async-jobs/{jobId}`](/api-reference/async-jobs/get-async-job) to retrieve the result once it's ready.
+
+<Note>
+  This endpoint returns a job reference, **not** the title result. The result is
+  delivered through the async-jobs polling endpoint.
+</Note>
 
 ## Request
 
 ### Headers
 
-| Header         | Required | Description        |
-| -------------- | -------- | ------------------ |
-| `x-api-key`    | Yes      | Your API key       |
-| `Content-Type` | Yes      | `application/json` |
+| Header            | Required | Description                                                                                                       |
+| ----------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `x-api-key`       | Yes      | Your API key                                                                                                      |
+| `Content-Type`    | Yes      | `application/json`                                                                                                |
+| `Idempotency-Key` | No       | Client-supplied key. Reusing a key returns the existing job (`200`) instead of queuing a new one — safe on retries |
 
 ### Body parameters
 
-| Parameter | Type   | Required | Description                                |
-| --------- | ------ | -------- | ------------------------------------------ |
-| `address` | string | Yes      | US property address to look up (1–500 chars) |
+| Parameter   | Type   | Required | Description                                  |
+| ----------- | ------ | -------- | -------------------------------------------- |
+| `email`     | string | Yes      | Applicant email address                      |
+| `firstName` | string | Yes      | Applicant first name (1–255 chars)           |
+| `lastName`  | string | Yes      | Applicant last name (1–255 chars)            |
+| `address`   | string | Yes      | US property address to look up (1–500 chars) |
 
 ### Example request
 
@@ -32,7 +41,11 @@ Looks up property/title records for a US address via DataTree. Returns ownership
 curl -X POST https://api.deepidv.com/v1/screening/title-check \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
+  -H "Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7" \
   -d '{
+    "email": "applicant@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
     "address": "1600 Amphitheatre Parkway, Mountain View, CA 94043"
   }'
 ```
@@ -43,13 +56,17 @@ const response = await fetch("https://api.deepidv.com/v1/screening/title-check",
   headers: {
     "Content-Type": "application/json",
     "x-api-key": "YOUR_API_KEY",
+    "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
   },
   body: JSON.stringify({
+    email: "applicant@example.com",
+    firstName: "John",
+    lastName: "Doe",
     address: "1600 Amphitheatre Parkway, Mountain View, CA 94043",
   }),
 });
 
-const data = await response.json();
+const { jobId } = await response.json();
 ```
 
 ```python Python
@@ -60,29 +77,38 @@ response = requests.post(
     headers={
         "Content-Type": "application/json",
         "x-api-key": "YOUR_API_KEY",
+        "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     },
     json={
+        "email": "applicant@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
         "address": "1600 Amphitheatre Parkway, Mountain View, CA 94043",
     },
 )
+
+job_id = response.json()["jobId"]
 ```
 
 </CodeGroup>
 
+## Idempotency
+
+Supply an optional `Idempotency-Key` header to make retries safe. The first request with a given key queues the job and returns `202`. Any subsequent request with the **same key** returns `200` with the **existing** job reference instead of starting a duplicate search. Use a unique key (e.g. a UUID) per logical title check.
+
 ## Response
 
-### 200 — Success
+### 202 — Accepted (new job queued)
 
-The response is a discriminated union on the `status` field:
+### 200 — Existing job returned (reused `Idempotency-Key`)
 
-| `status`                | Description                                                            |
-| ----------------------- | ---------------------------------------------------------------------- |
-| `found`                 | A single property matched — includes `subjectProperty` detail          |
-| `multiple_properties`   | The address matched more than one property — disambiguation required   |
-| `unsupported_region`    | The address is outside the supported (US) coverage area                |
-| `not_found`             | No property/title record matched the address                           |
+Both responses share the same body shape:
 
-When `status` is `found`, the `subjectProperty` object carries the property detail (APN, full address, city, state, ownership and sale history, lien data, and location fields).
+| Field     | Type   | Description                                                         |
+| --------- | ------ | ------------------------------------------------------------------- |
+| `jobId`   | string | Identifier to poll for the result via `GET /v1/async-jobs/{jobId}` |
+| `status`  | string | Job status — one of `pending`, `processing`, `ready`, `failed`     |
+| `message` | string | Human-readable acknowledgement                                      |
 
 ### Error responses
 
@@ -95,16 +121,24 @@ When `status` is `found`, the `subjectProperty` object carries the property deta
 | `500 Server Error` | Unexpected server error                   |
 
 <ResponseExample>
-```json 200
+```json 202
 {
-  "status": "found",
-  "subjectProperty": {
-    "APNFormatted": "123-456-789",
-    "APNUnformatted": "123456789",
-    "PropertyFullStreetAddress": "1600 Amphitheatre Parkway",
-    "PropertyCity": "Mountain View",
-    "PropertyState": "CA"
-  }
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "pending",
+  "message": "Title check has been queued. Poll GET /v1/async-jobs/{jobId} for results."
 }
 ```
 </ResponseExample>
+
+## Result shape
+
+Once the job reaches `ready`, the async-jobs endpoint returns the title result in its `result` field. The result is a **discriminated union on `status`**:
+
+| `status`              | Description                                                          |
+| --------------------- | -------------------------------------------------------------------- |
+| `found`               | A single property matched — includes `subjectProperty` detail        |
+| `multiple_properties` | The address matched more than one property — disambiguation required |
+| `unsupported_region`  | The address is outside the supported (US) coverage area              |
+| `not_found`           | No property/title record matched the address                         |
+
+When `status` is `found`, the `subjectProperty` object carries the property detail (APN, full address, city, state, ownership and sale history, lien data, and location fields).
