@@ -90,7 +90,7 @@
             ]
           },
           {
-            "group": "Silent Screening (Coming Soon!)",
+            "group": "Silent Screening",
             "pages": [
               "api-reference/silent-screening/pep-sanctions",
               "api-reference/silent-screening/adverse-media",
@@ -98,8 +98,21 @@
             ]
           },
           {
-            "group": "Server-to-Server (Coming Soon!)",
-            "pages": ["api-reference/server-to-server/overview"]
+            "group": "Async Jobs",
+            "pages": [
+              "api-reference/async-jobs/get-async-job"
+            ]
+          },
+          {
+            "group": "Server-to-Server",
+            "pages": [
+              "api-reference/server-to-server/overview",
+              "api-reference/server-to-server/document-scan",
+              "api-reference/server-to-server/face-detect",
+              "api-reference/server-to-server/face-compare",
+              "api-reference/server-to-server/face-estimate-age",
+              "api-reference/server-to-server/identity-verify"
+            ]
           },
           {
             "group": "Sandbox",
@@ -157,6 +170,12 @@
             "pages": [
               "chain-layer/faq",
               "chain-layer/reference"
+            ]
+          },
+          {
+            "group": "OpenAPI Specification",
+            "pages": [
+              "api-reference/openapi-spec"
             ]
           }
         ]

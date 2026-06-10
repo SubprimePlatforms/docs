@@ -1,0 +1,139 @@
+---
+title: Detect Face
+description: Detect a face in an image and return bounding box and landmarks
+api: POST /v1/face/detect
+---
+
+```
+POST /v1/face/detect
+```
+
+Submit a single image. If a face is present, the response includes its bounding box, key facial landmarks, and a normalized confidence score.
+
+Use this endpoint when you need to confirm a usable face image before sending it to [`/v1/face/compare`](/api-reference/server-to-server/face-compare) or [`/v1/face/estimate-age`](/api-reference/server-to-server/face-estimate-age) — for example, to give the user immediate feedback that their selfie is too dark or off-frame.
+
+## Request
+
+### Headers
+
+| Header         | Required | Description                                 |
+| -------------- | -------- | ------------------------------------------- |
+| `x-api-key`    | Yes      | Your API key                                |
+| `Content-Type` | Yes      | `multipart/form-data` or `application/json` |
+
+### Body parameters
+
+| Parameter | Type             | Required | Description                                                                              |
+| --------- | ---------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `image`   | binary \| string | Yes      | The image. For multipart, the file part. For JSON, a base64, base64url, or S3-key string. |
+
+See the [overview](/api-reference/server-to-server/overview#image-inputs) for the shared image rules.
+
+### Example request
+
+<CodeGroup>
+```bash cURL (multipart)
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@selfie.jpg"
+```
+
+```bash cURL (JSON)
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "uploads/selfie-abc123.jpg" }'
+```
+
+```javascript Node.js
+import fs from "node:fs";
+
+const form = new FormData();
+form.append(
+  "image",
+  new Blob([fs.readFileSync("selfie.jpg")]),
+  "selfie.jpg",
+);
+
+const response = await fetch("https://api.deepidv.com/v1/face/detect", {
+  method: "POST",
+  headers: { "x-api-key": "YOUR_API_KEY" },
+  body: form,
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+with open("selfie.jpg", "rb") as f:
+    response = requests.post(
+        "https://api.deepidv.com/v1/face/detect",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"image": f},
+    )
+```
+</CodeGroup>
+
+## Response
+
+### 200 — Success
+
+| Field          | Type          | Description                                                          |
+| -------------- | ------------- | -------------------------------------------------------------------- |
+| `faceDetected` | boolean       | True when a face was detected                                        |
+| `confidence`   | number (0–1)  | Detection confidence for the top face. `0` when no face was detected |
+| `boundingBox`  | object        | Normalized bounding-box coordinates (omitted when no face detected)  |
+| `landmarks`    | `object[]`    | Facial landmark points (omitted when no face detected)               |
+
+`boundingBox` shape: `{ top, left, width, height }`, each normalized to `0–1` against the source image dimensions.
+
+`landmarks[]` shape: `{ type, x, y }`, where `type` is the landmark name (e.g. `eyeLeft`, `nose`, `mouthRight`) and `x`/`y` are normalized to the image dimensions.
+
+### Error responses
+
+| Status | Description                                                                  |
+| ------ | ---------------------------------------------------------------------------- |
+| `400`  | Invalid body, unsupported image format, or image larger than 15 MB           |
+| `401`  | Missing or invalid `x-api-key`                                               |
+| `402`  | Insufficient token balance                                                   |
+| `403`  | The supplied `image` S3 key is not readable by this organization             |
+| `429`  | Rate limit exceeded                                                          |
+| `500`  | Unexpected server error — safe to retry with backoff                         |
+
+<ResponseExample>
+```json 200 — face found
+{
+  "faceDetected": true,
+  "confidence": 0.99,
+  "boundingBox": {
+    "top": 0.18,
+    "left": 0.31,
+    "width": 0.41,
+    "height": 0.52
+  },
+  "landmarks": [
+    { "type": "eyeLeft", "x": 0.44, "y": 0.38 },
+    { "type": "eyeRight", "x": 0.58, "y": 0.38 },
+    { "type": "nose", "x": 0.51, "y": 0.47 },
+    { "type": "mouthLeft", "x": 0.46, "y": 0.59 },
+    { "type": "mouthRight", "x": 0.57, "y": 0.59 }
+  ]
+}
+```
+
+```json 200 — no face
+{
+  "faceDetected": false,
+  "confidence": 0
+}
+```
+</ResponseExample>
+
+<Info>
+  When no face is detected the endpoint still returns `200 OK` with
+  `faceDetected: false`. Treat that as a UX-level failure (prompt the user
+  to retake) rather than an integration error. Only the highest-confidence
+  face is returned.
+</Info>

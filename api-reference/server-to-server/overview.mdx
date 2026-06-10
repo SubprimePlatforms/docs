@@ -1,10 +1,98 @@
 ---
 title: Overview
-description: Server-to-server API integrations
+description: Server-to-server API integrations for direct backend verification
 ---
 
-<Note>
-  Server-to-server APIs are **coming soon**.
-</Note>
-
 Server-to-server APIs enable direct backend integrations without using deepidv's hosted verification flows. If you want to build your own UI and handle the applicant experience yourself, these APIs let you submit data directly from your server and receive results synchronously — ideal for custom frontends, batch processing, automated pipelines, and real-time decisioning.
+
+## Endpoints
+
+Five endpoints are available under the `/v1` prefix:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /v1/document/scan` | Extract fields from a government-issued ID and run authenticity checks |
+| `POST /v1/face/detect` | Detect a face in an image and return bounding box + landmarks |
+| `POST /v1/face/compare` | Compare two faces and return a similarity score |
+| `POST /v1/face/estimate-age` | Estimate the age range from a single face image |
+| `POST /v1/identity/verify` | Run document scan + face detect + face compare in a single call |
+
+All five endpoints share the same auth, image-input model, and error format described below.
+
+## Authentication
+
+Every request must include your organization API key in the `x-api-key` header. See [Authentication](/authentication) for full details and rate limit information.
+
+```bash
+x-api-key: YOUR_API_KEY
+```
+
+## Image inputs
+
+Every server-to-server endpoint accepts images in one of two ways. You can mix them within a single call (for example, `/v1/face/compare` can take one image as a `fileKey` and the other as raw multipart bytes).
+
+### Option 1 — `multipart/form-data`
+
+Send the raw image bytes as a form field. Use this when the image lives on your server and you don't need to keep it around after the call.
+
+```bash cURL
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@selfie.jpg"
+```
+
+Supported content types: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`. Max size: 15 MB per image. The content type is detected from the file's magic bytes, not the `Content-Type` header — mislabelled files are still accepted as long as the bytes match a supported format.
+
+### Option 2 — `application/json` with a presigned `fileKey`, base64, or base64url string
+
+If your image is already in deepidv-managed storage (for example, uploaded during an earlier session or via the upload endpoint), reference it by its `fileKey`. You can also send the image inline as a base64 or base64url-encoded string. In all three cases the value is a **bare string**:
+
+```bash cURL — S3 key
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "uploads/abc123-selfie.jpg" }'
+```
+
+```bash cURL — base64
+curl -X POST https://api.deepidv.com/v1/face/detect \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "iVBORw0KGgoAAAANSUhEUgAA..." }'
+```
+
+The server detects which form you sent by inspecting the string (valid base64 → base64; valid base64url → base64url; otherwise → S3 key). Re-using an existing `fileKey` is the recommended pattern for high-throughput pipelines since it avoids re-uploading bytes on each call.
+
+## Response shape
+
+Successful responses are JSON, with a service-specific payload per endpoint (see each endpoint's reference page).
+
+## Error shape
+
+All errors return a consistent JSON shape:
+
+```json
+{
+  "error": "Human-readable description of what went wrong",
+  "hints": ["Optional suggestions to help you recover"]
+}
+```
+
+Common status codes:
+
+| Status | Meaning |
+| --- | --- |
+| **400** | Malformed request — bad image, missing field, invalid schema |
+| **401** | Missing or invalid `x-api-key` |
+| **402** | Insufficient token balance |
+| **403** | API key lacks access to the endpoint, or the referenced `fileKey` cannot be read |
+| **429** | Rate limit exceeded — back off and retry |
+| **500** | Unexpected error on our side — safe to retry with backoff |
+
+## Compound verification
+
+`POST /v1/identity/verify` is a compound endpoint that runs `/v1/document/scan`, `/v1/face/detect`, and `/v1/face/compare` in parallel and returns a single aggregated response with an `overallConfidence` score. Use it when you want one round-trip for a full ID + selfie verification instead of orchestrating the three calls yourself.
+
+## What's next
+
+Endpoint-by-endpoint request and response schemas are coming to this section shortly. In the meantime, the contract is also published as an OpenAPI specification in the open-api repository — reach out to your account contact if you need early access.

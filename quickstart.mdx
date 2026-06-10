@@ -151,11 +151,29 @@ export const VideoEmbed = ({ src, title = "Video" }) => (
     }
     ```
 
-    **Option B — Direct API calls** *(Coming soon!)*
+    **Option B — Direct API calls**
 
-    Call individual verification endpoints directly from your backend — no session required. Ideal for server-to-server or fully custom integrations.
+    Call individual verification endpoints directly from your backend — no session required. Ideal for server-to-server pipelines, batch processing, and fully custom verification flows where you control the applicant experience end-to-end.
 
-    See the full endpoint list in the [API Reference](/api-reference/sessions/create-session).
+    Five endpoints are available under `/v1`:
+
+    | Endpoint | Purpose |
+    | --- | --- |
+    | `POST /v1/document/scan` | Extract fields from a government-issued ID and run authenticity checks |
+    | `POST /v1/face/detect` | Detect a face in an image and return bounding box + landmarks |
+    | `POST /v1/face/compare` | Compare two faces and return a similarity score |
+    | `POST /v1/face/estimate-age` | Estimate age range from a single face image |
+    | `POST /v1/identity/verify` | Run document scan + face detect + face compare in a single call |
+
+    Each endpoint accepts images either as `multipart/form-data` (raw bytes) or as `application/json` with a presigned `fileKey`.
+
+    ```bash cURL
+    curl -X POST https://api.deepidv.com/v1/face/detect \
+      -H "x-api-key: YOUR_API_KEY" \
+      -F "image=@selfie.jpg"
+    ```
+
+    See the [Server-to-Server overview](/api-reference/server-to-server/overview) for full details.
   </Step>
 
   <Step title="Track results">

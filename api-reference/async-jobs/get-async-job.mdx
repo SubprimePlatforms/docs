@@ -1,0 +1,137 @@
+---
+title: Get Async Job
+description: Poll the status and result of a long-running async job
+api: GET /v1/async-jobs/{jobId}
+---
+
+```
+GET /v1/async-jobs/{jobId}
+```
+
+Returns the current state of an async job. Endpoints that kick off long-running work — such as [adverse media screening](/api-reference/silent-screening/adverse-media) — return a `jobId` immediately; poll this endpoint until the job reaches a terminal state (`ready` or `failed`). The `result` shape depends on which endpoint created the job.
+
+## Job lifecycle
+
+A job moves through these states:
+
+| `status`     | Terminal | Payload     | Meaning                                         |
+| ------------ | -------- | ----------- | ----------------------------------------------- |
+| `pending`    | No       | —           | Queued, not yet picked up                       |
+| `processing` | No       | —           | Actively running                                |
+| `ready`      | Yes      | `result`    | Completed successfully — result is available    |
+| `failed`     | Yes      | `error`     | Failed — `error` describes what went wrong      |
+
+<Note>
+  Poll on a backoff interval (e.g. every 2–5 seconds) until `status` is `ready`
+  or `failed`. Jobs are retained temporarily and then expire via a TTL, after
+  which the job ID returns `404` — fetch the result promptly once it's ready.
+</Note>
+
+## Request
+
+### Path parameters
+
+| Parameter | Type   | Required | Description                                  |
+| --------- | ------ | -------- | -------------------------------------------- |
+| `jobId`   | string | Yes      | The job ID returned by the creating endpoint |
+
+### Headers
+
+| Header      | Required | Description  |
+| ----------- | -------- | ------------ |
+| `x-api-key` | Yes      | Your API key |
+
+### Example request
+
+<CodeGroup>
+```bash cURL
+curl https://api.deepidv.com/v1/async-jobs/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.deepidv.com/v1/async-jobs/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  {
+    headers: { "x-api-key": "YOUR_API_KEY" },
+  },
+);
+
+const job = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.deepidv.com/v1/async-jobs/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    headers={"x-api-key": "YOUR_API_KEY"},
+)
+
+job = response.json()
+```
+
+</CodeGroup>
+
+## Response
+
+### 200 — Job state
+
+The response is a discriminated union on `status`. All variants include `jobId`, `createdAt`, `updatedAt`, and `status`.
+
+| Field       | Type    | Present when           | Description                                           |
+| ----------- | ------- | ---------------------- | ----------------------------------------------------- |
+| `jobId`     | string  | always                 | The job identifier                                    |
+| `status`    | string  | always                 | `pending`, `processing`, `ready`, or `failed`         |
+| `createdAt` | number  | always                 | Epoch timestamp the job was created                   |
+| `updatedAt` | string  | always                 | ISO 8601 timestamp the job was last updated           |
+| `result`    | object  | `status` is `ready`    | The job result (shape depends on the originating job) |
+| `error`     | string  | `status` is `failed`   | Description of the failure                            |
+
+### Error responses
+
+| Status             | Description                                          |
+| ------------------ | ---------------------------------------------------- |
+| `400 Bad Request`  | Malformed job ID                                     |
+| `401 Unauthorized` | API key is invalid                                   |
+| `403 Forbidden`    | API key is missing or the job belongs to another org |
+| `404 Not Found`    | No job with that ID (unknown or expired)             |
+| `500 Server Error` | Unexpected server error                              |
+
+<ResponseExample>
+```json ready
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "ready",
+  "createdAt": 1717593600000,
+  "updatedAt": "2026-06-05T12:00:00.000Z",
+  "result": {
+    "totalHits": 2,
+    "riskLevel": "MEDIUM",
+    "riskScore": 45,
+    "summary": "Two adverse-media findings corroborated by court records.",
+    "findings": [],
+    "exposuresByCategory": {}
+  }
+}
+```
+
+```json processing
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "processing",
+  "createdAt": 1717593600000,
+  "updatedAt": "2026-06-05T12:00:01.000Z"
+}
+```
+
+```json failed
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "failed",
+  "createdAt": 1717593600000,
+  "updatedAt": "2026-06-05T12:00:30.000Z",
+  "error": "Upstream provider timed out"
+}
+```
+</ResponseExample>

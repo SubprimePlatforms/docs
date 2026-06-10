@@ -1,0 +1,20 @@
+---
+title: OpenAPI Specification
+description: Download the full deepidv API contract as an OpenAPI 3.1 specification
+---
+
+The complete deepidv API contract is published as an OpenAPI 3.1 specification, generated directly from the Zod schemas on the server. Use it to drive your own integration tooling — Postman, Insomnia, Stoplight, contract tests in CI, or contract-diffing between releases.
+
+<Card title="Download openapi.yaml" icon="download" href="/api-reference/openapi.yaml">
+  Latest version of the deepidv server-to-server API contract (OpenAPI 3.1, YAML).
+</Card>
+
+## Use cases
+
+- **Import into API tooling** — every major API client supports OpenAPI 3.1 import.
+- **Contract-test your integration** in CI by validating recorded requests and responses against the spec.
+- **Diff the contract** between releases to spot breaking changes before they hit your integration.
+
+## Versioning
+
+The spec follows the same release cadence as the deepidv API. Breaking changes are announced ahead of time and called out in the changelog. When in doubt, pin to a specific spec version by downloading and committing the file alongside your integration tests.
