@@ -1,0 +1,29 @@
+---
+title: The Log
+description: The macro view of the transparency log — STHs, tree growth, and the master public key
+---
+
+> The log at [proof.deepidv.com/log](https://proof.deepidv.com/log) gives you the macro view of the transparency log as a whole.
+
+## STH timeline
+
+Every hour, every active segment produces a Signed Tree Head. The log page lists the most recent STHs across all segments, with:
+
+- Segment ID
+- Tree size
+- Root hash (truncated, click to expand)
+- Master signature (truncated)
+- RFC 3161 timestamp tokens
+- Base L2 anchor tx hash (linked to Basescan)
+
+## Tree size sparkline
+
+A visual chart showing how the log has grown over time. Useful for confirming activity, spotting anomalies, and understanding the cadence of attestations.
+
+## Master public key
+
+The master STH key's public PEM is downloadable directly from the log page. Anyone verifying a proof bundle offline can use this to confirm the master signature on any STH.
+
+<Tip>
+Save a local copy of `master.pem` today. If deepidv ever became unreachable, you'd still be able to verify any STH offline using only the master public key and the on-chain anchor.
+</Tip>

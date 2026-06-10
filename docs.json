@@ -26,30 +26,19 @@
           },
           {
             "group": "Pricing",
-            "pages": [
-              "pricing"
-            ]
+            "pages": ["pricing"]
           },
           {
             "group": "Workflows & Verification",
-            "pages": [
-              "workflows/workflows",
-              "workflows/verification-links"
-            ]
+            "pages": ["workflows/workflows", "workflows/verification-links"]
           },
           {
             "group": "Webhooks",
-            "pages": [
-              "webhooks/overview",
-              "webhooks/event-object"
-            ]
+            "pages": ["webhooks/overview", "webhooks/event-object"]
           },
           {
             "group": "Review Operations",
-            "pages": [
-              "review/manual-review",
-              "review/export"
-            ]
+            "pages": ["review/manual-review", "review/export"]
           },
           {
             "group": "Settings",
@@ -82,9 +71,7 @@
           },
           {
             "group": "Credit Check",
-            "pages": [
-              "api-reference/credit-check/create-credit-check"
-            ]
+            "pages": ["api-reference/credit-check/create-credit-check"]
           },
           {
             "group": "Financial",
@@ -129,8 +116,60 @@
           },
           {
             "group": "Sandbox",
+            "pages": ["api-reference/sandbox/models"]
+          }
+        ]
+      },
+      {
+        "tab": "Integrate / SDKs",
+        "groups": [
+          {
+            "group": "Guides",
             "pages": [
-              "api-reference/sandbox/models"
+              "integrate/ai-agent-integration",
+              "integrate/verify-skill"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Chain Layer",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "chain-layer/overview",
+              "chain-layer/how-it-works"
+            ]
+          },
+          {
+            "group": "Explorer",
+            "pages": [
+              "chain-layer/explorer",
+              "chain-layer/registry",
+              "chain-layer/log",
+              "chain-layer/attestation-detail"
+            ]
+          },
+          {
+            "group": "Verification",
+            "pages": [
+              "chain-layer/proof-bundles",
+              "chain-layer/sdks",
+              "chain-layer/trust-model"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "chain-layer/governance"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "chain-layer/faq",
+              "chain-layer/reference"
             ]
           },
           {
@@ -153,6 +192,12 @@
           "anchor": "Admin Console",
           "href": "https://app.deepidv.com",
           "icon": "grid-2",
+          "isExternal": true
+        },
+        {
+          "anchor": "Agent Skills",
+          "href": "https://github.com/Deep-Identity-Inc/agent-skills",
+          "icon": "robot",
           "isExternal": true
         }
       ]

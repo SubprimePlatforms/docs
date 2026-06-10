@@ -31,6 +31,7 @@ Every webhook event follows this structure:
 | `session.status.submitted` | An applicant has completed and submitted their verification session |
 | `session.status.verified` | A verification session has been marked as verified (via manual review or automatic rules) |
 | `session.status.rejected` | A verification session has been marked as rejected (via manual review or automatic rules) |
+| `session.status.failed` | A verification session has hit the workflow's configured failed-attempt limit and been auto-failed |
 
 ## Headers
 
@@ -54,7 +55,7 @@ The `data` field contains the full session object. This is the same structure re
 | `user_id` | string | User ID of the applicant |
 | `sender_user_id` | string | User ID of the person who created the session |
 | `external_id` | string | Your external reference ID (if provided at session creation) |
-| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, or `VOIDED` |
+| `status` | string | `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, `VOIDED`, `EXPIRED`, or `FAILED` |
 | `type` | string | `session`, `verification`, `credit-application`, `silent-screening`, or `deep-doc` |
 | `session_progress` | string | `PENDING`, `STARTED`, or `COMPLETED` |
 | `created_at` | string | ISO 8601 timestamp of session creation |
@@ -221,6 +222,35 @@ Sent when a session is marked as rejected. The payload structure is the same as 
 }
 ```
 
+### `session.status.failed`
+
+Sent when a session is auto-failed by the system after reaching the workflow's configured maximum number of failed attempts. The payload structure is the same as `session.status.submitted`, with `status` set to `FAILED`, `session_progress` set to `COMPLETED`, and `meta_data.failureData` populated with the recorded attempts.
+
+```json
+{
+  "type": "session.status.failed",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "FAILED",
+    "session_progress": "COMPLETED",
+    "meta_data": {
+      "applicantSubmissionIp": "192.168.1.1",
+      "failureData": {
+        "failedAttempts": 3,
+        "attempts": [
+          { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY",   "failedAt": "2026-03-23T14:30:10.000Z" },
+          { "reason": "OCR_NAME_MISSING", "slot": "PRIMARY",   "failedAt": "2026-03-23T14:31:42.000Z" },
+          { "reason": "DOC_TYPE_NOT_ALLOWED", "slot": "SECONDARY", "failedAt": "2026-03-23T14:33:08.000Z" }
+        ]
+      }
+    },
+    "...": "same structure as session.status.submitted"
+  }
+}
+```
+
+See [`failureData`](/api-reference/sessions/retrieve-session#failure-data-object) for the full field reference. `reason` is intentionally a loose string — new values may be added over time, so consumers should default-handle unknown values.
+
 ## What to do with each event
 
 | Event | Common use cases |
@@ -229,3 +259,4 @@ Sent when a session is marked as rejected. The payload structure is the same as 
 | `session.status.submitted` | Trigger your review workflow, notify reviewers, update applicant status in your system |
 | `session.status.verified` | Grant access, activate accounts, send confirmation emails, update CRM records |
 | `session.status.rejected` | Notify applicant, flag for manual review, trigger re-verification flow |
+| `session.status.failed` | Notify applicant, surface a "contact support" path, and log `meta_data.failureData.attempts` for diagnostics |

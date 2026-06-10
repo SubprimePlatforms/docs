@@ -1,0 +1,85 @@
+---
+title: The Explorer
+description: A public, no-login-required view of the chain layer at proof.deepidv.com
+---
+
+> The explorer lives at [proof.deepidv.com](https://proof.deepidv.com). It's a public, no-login-required view into the chain layer.
+
+## Home
+
+**URL:** [proof.deepidv.com](https://proof.deepidv.com)
+
+Live attestation stream. Every mint appears in real time via Server-Sent Events. Below the fold: a rolling table of the most recent 50 attestations with ULID, record type, issuer, envelope hash prefix, mint timestamp, and segment number.
+
+## Registry
+
+**URL:** [proof.deepidv.com/registry](https://proof.deepidv.com/registry)
+
+Paginated table of every attestation in the log. Filterable by:
+
+- **Record type.** `IDV` is the only active type at v1 launch. `BIO`, `DOC`, and `ADDR` appear as disabled "Phase 2" chips. `WIT` (witness attestations) and `AGT` (agent verifications) ship in Phase 3.
+- **Issuer.** Restrict the view to a single issuer.
+- **Segment.** View only attestations in a specific segment.
+
+Search by ULID, envelope hash prefix, or issuer ID. URL state is shareable — every filter combination has its own deep link.
+
+See [The Registry](/chain-layer/registry) for full details.
+
+## Attestation Detail
+
+**URL:** `proof.deepidv.com/a/{attestation_id}`
+
+The single most important page in the explorer. Renders the full six-step proof pipeline for one attestation:
+
+1. **Envelope hash.** The hash of the canonicalized envelope JSON.
+2. **Issuer signature.** ECDSA P-256 signature by the issuer over the envelope hash.
+3. **Dual TSA timestamps.** RFC 3161 timestamp tokens from DigiCert and Sectigo, proving the envelope existed at the claimed time.
+4. **Merkle inclusion.** The audit path from this envelope's leaf to the segment's current STH root.
+5. **Master STH signature.** ECDSA P-256 signature by the chain-master key over the STH.
+6. **On-chain anchor.** The Base L2 transaction hash committing the STH root. Click through to Basescan.
+
+Each step is independently verifiable. If any step fails, the whole bundle fails — and the failure point tells you exactly where the integrity broke.
+
+From this page you can also:
+
+- Download the `.dpiv` proof bundle
+- Click through to the issuer's profile
+- Click through to the segment
+- See the label commitments table (names + revealed values where available; salts are never rendered)
+
+See [Attestation Detail Pages](/chain-layer/attestation-detail) for a deeper walkthrough.
+
+## Issuer Profile
+
+**URL:** `proof.deepidv.com/issuer/{issuer_id}`
+
+Per-issuer page showing:
+
+- The issuer's P-256 public key (downloadable as PEM)
+- Rotation history (empty in v1)
+- Last 50 attestations issued
+
+## Segment Profile
+
+**URL:** `proof.deepidv.com/segment/{segment_id}`
+
+Per-segment page showing:
+
+- Tree size over time (sparkline chart)
+- Full STH list — every hourly checkpoint plus the segment's closure STH
+- Base L2 transaction hashes for each anchored STH (linked to Basescan)
+- Consistency proofs between successive STHs (downloadable)
+
+## Log
+
+**URL:** [proof.deepidv.com/log](https://proof.deepidv.com/log)
+
+Bird's-eye view of the entire transparency log. Recent STHs across all segments, tree-size visualization, and a downloadable copy of the master public key (`master.pem`) for offline verification of any STH.
+
+See [The Log](/chain-layer/log) for full details.
+
+## Governance
+
+**URL:** [proof.deepidv.com/governance](https://proof.deepidv.com/governance)
+
+Single-sign-on gated. Unauthenticated visits redirect to sign-in. See [The Governance Console](/chain-layer/governance).

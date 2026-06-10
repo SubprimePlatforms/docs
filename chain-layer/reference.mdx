@@ -1,0 +1,42 @@
+---
+title: Reference
+description: API endpoints, SDK sources, public surfaces, and standards
+---
+
+## Endpoints
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/v1/sth?segment={id}` | GET | Latest signed tree head for a segment |
+| `/v1/attestation/{id}` | GET | Full attestation detail |
+| `/v1/bundle/{id}` | GET | Download `.dpiv` proof bundle |
+| `/v1/registry` | GET | Paginated registry, with filters |
+| `/v1/issuer/{id}` | GET | Issuer profile + public key |
+| `/v1/segment/{id}` | GET | Segment profile + STH list |
+| `/v1/log` | GET | Recent STHs across all segments |
+| `/v1/stream` | GET (SSE) | Real-time attestation stream |
+| `/v1/proof/{from}/{to}` | GET | Consistency proof between STHs |
+
+## SDK source
+
+- **Node.js:** [github.com/deep-identity-inc/deepidv-chain-node](https://github.com/deep-identity-inc/deepidv-chain-node)
+- **Python:** [github.com/deep-identity-inc/deepidv-chain-python](https://github.com/deep-identity-inc/deepidv-chain-python)
+
+## Public surfaces
+
+- **Explorer:** [proof.deepidv.com](https://proof.deepidv.com)
+- **API:** [api.deepidv.com](https://api.deepidv.com)
+- **Docs:** [docs.deepidv.com](https://docs.deepidv.com)
+- **Status:** [status.deepidv.com](https://status.deepidv.com)
+
+## Standards referenced
+
+- **RFC 6962** — Certificate Transparency (Merkle log structure)
+- **RFC 3161** — Time-Stamp Protocol
+- **RFC 8785** — JSON Canonicalization Scheme
+- **NIST FIPS 186-4** — ECDSA with P-256 curve
+- **NIST FIPS 180-4** — SHA-256
+
+---
+
+*deepidv — verification engine and agentic compliance suite. San Francisco.*

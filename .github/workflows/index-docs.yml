@@ -1,0 +1,52 @@
+name: Index Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.mdx"
+      - "docs.json"
+      - "indexer/**"
+      - ".github/workflows/index-docs.yml"
+  workflow_dispatch:
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout OpenAPI spec
+        uses: actions/checkout@v4
+        with:
+          repository: Deep-Identity-Inc/deepidv-open-api
+          path: _openapi
+          token: ${{ secrets.OPENAPI_SYNC_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: indexer-${{ runner.os }}-${{ hashFiles('indexer/requirements.txt') }}
+          restore-keys: indexer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pip install -r indexer/requirements.txt
+
+      - name: Run docs indexer
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
+        run: |
+          python -m indexer.cli \
+            --docs-root . \
+            --openapi-spec _openapi/infrastructure/ec2/open-api/openapi.yaml \
+            --namespace deepidv-docs
+
+      - name: Indexing failed
+        if: failure()
+        run: echo "::error::Docs indexing pipeline failed — check logs above"
