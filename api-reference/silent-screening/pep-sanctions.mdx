@@ -23,6 +23,7 @@ Screens an individual against politically-exposed-person (PEP) and sanctions wat
 
 | Parameter     | Type   | Required | Description                           |
 | ------------- | ------ | -------- | ------------------------------------- |
+| `email`       | string | Yes      | Individual's email address            |
 | `firstName`   | string | Yes      | Individual's first name (1–255 chars) |
 | `lastName`    | string | Yes      | Individual's last name (1–255 chars)  |
 | `dateOfBirth` | string | Yes      | Date of birth in `YYYY-MM-DD` format  |
@@ -35,6 +36,7 @@ curl -X POST https://api.deepidv.com/v1/screening/pep-sanctions \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
+    "email": "applicant@example.com",
     "firstName": "John",
     "lastName": "Doe",
     "dateOfBirth": "1980-01-15"
@@ -49,6 +51,7 @@ const response = await fetch("https://api.deepidv.com/v1/screening/pep-sanctions
     "x-api-key": "YOUR_API_KEY",
   },
   body: JSON.stringify({
+    email: "applicant@example.com",
     firstName: "John",
     lastName: "Doe",
     dateOfBirth: "1980-01-15",
@@ -68,6 +71,7 @@ response = requests.post(
         "x-api-key": "YOUR_API_KEY",
     },
     json={
+        "email": "applicant@example.com",
         "firstName": "John",
         "lastName": "Doe",
         "dateOfBirth": "1980-01-15",

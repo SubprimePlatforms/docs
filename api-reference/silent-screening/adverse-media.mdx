@@ -29,6 +29,7 @@ Starts an **asynchronous** adverse-media check across news, court records, and w
 
 | Parameter     | Type   | Required | Description                                          |
 | ------------- | ------ | -------- | ---------------------------------------------------- |
+| `email`       | string | Yes      | Individual's email address                           |
 | `firstName`   | string | Yes      | Individual's first name (1–255 chars)                |
 | `lastName`    | string | Yes      | Individual's last name (1–255 chars)                 |
 | `dateOfBirth` | string | Yes      | Date of birth in `YYYY-MM-DD` format                 |
@@ -43,6 +44,7 @@ curl -X POST https://api.deepidv.com/v1/screening/adverse-media \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7" \
   -d '{
+    "email": "applicant@example.com",
     "firstName": "John",
     "lastName": "Doe",
     "dateOfBirth": "1980-01-15",
@@ -59,6 +61,7 @@ const response = await fetch("https://api.deepidv.com/v1/screening/adverse-media
     "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
   },
   body: JSON.stringify({
+    email: "applicant@example.com",
     firstName: "John",
     lastName: "Doe",
     dateOfBirth: "1980-01-15",
@@ -80,6 +83,7 @@ response = requests.post(
         "Idempotency-Key": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     },
     json={
+        "email": "applicant@example.com",
         "firstName": "John",
         "lastName": "Doe",
         "dateOfBirth": "1980-01-15",
