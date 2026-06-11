@@ -1,0 +1,2879 @@
+openapi: 3.1.0
+info:
+  title: deepidv Public API
+  version: 0.1.0
+  description: Server-to-server endpoints for the deepidv identity verification
+    platform. Authenticate with a per-organization API key via the `x-api-key`
+    header.
+servers:
+  - url: https://api.deepidv.com
+    description: Production
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Per-organization API key. Issued via the deepidv dashboard. Send on
+        every request.
+  schemas:
+    ScanDocumentResponse:
+      type: object
+      properties:
+        documentType:
+          type: string
+        fullName:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+        gender:
+          type: string
+        nationality:
+          type: string
+        documentNumber:
+          type: string
+        expirationDate:
+          type: string
+        issuingCountry:
+          type: string
+        address:
+          type: string
+        mrzData:
+          type: string
+        rawFields:
+          type: object
+          additionalProperties:
+            type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Average extraction confidence across all detected fields, 0–1.
+      required:
+        - documentType
+        - fullName
+        - firstName
+        - lastName
+        - dateOfBirth
+        - gender
+        - nationality
+        - documentNumber
+        - expirationDate
+        - issuingCountry
+        - rawFields
+        - confidence
+      description: Structured identity data extracted from a document image via AWS
+        Textract AnalyzeID.
+    ErrorResponse:
+      anyOf:
+        - $ref: "#/components/schemas/SimpleErrorResponse"
+        - $ref: "#/components/schemas/ValidationErrorResponse"
+      description: "Shared error envelope returned by all server-to-server endpoints.
+        The shape depends on the failure mode: validation failures include
+        `message` + `hints`; all other failures return a single `error` string."
+    SimpleErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+      description: Error returned for authentication failures, image format errors,
+        and other terminal failures with a single human-readable message.
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        hints:
+          type: array
+          items: {}
+      required:
+        - message
+        - hints
+      description: Error returned when the request body fails schema validation.
+        `hints` contains the underlying Zod issues.
+    ScanDocumentJsonRequest:
+      type: object
+      properties:
+        image:
+          $ref: "#/components/schemas/ImageAssetJson"
+        documentType:
+          $ref: "#/components/schemas/DocumentType"
+      required:
+        - image
+    ImageAssetJson:
+      type: string
+      minLength: 1
+      description: An image payload sent as a JSON string. Accepts a base64 string,
+        base64url string, or an S3 object key for a file previously uploaded via
+        the presigned-upload flow.
+      example: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=
+    DocumentType:
+      type: string
+      enum:
+        - passport
+        - drivers_license
+        - national_id
+        - auto
+      description: Type of identity document. Use 'auto' to let the server infer the
+        type from the document image.
+      example: auto
+    ScanDocumentMultipartRequest:
+      type: object
+      properties:
+        image:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+        documentType:
+          $ref: "#/components/schemas/DocumentType"
+      required:
+        - image
+    ImageAssetMultipart:
+      type: string
+      format: binary
+      description: Binary image file uploaded as part of a multipart/form-data request.
+    DetectFaceResponse:
+      type: object
+      properties:
+        faceDetected:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Detection confidence for the top face, 0–1.
+        boundingBox:
+          $ref: "#/components/schemas/BoundingBox"
+        landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Landmark"
+      required:
+        - faceDetected
+        - confidence
+      description: Result of face detection on a single image. When `faceDetected` is
+        false, `confidence` is 0 and `boundingBox`/`landmarks` are omitted.
+    BoundingBox:
+      type: object
+      properties:
+        top:
+          type: number
+        left:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+      required:
+        - top
+        - left
+        - width
+        - height
+      description: Normalized bounding-box coordinates (0–1) relative to the source
+        image dimensions.
+    Landmark:
+      type: object
+      properties:
+        type:
+          type: string
+        x:
+          type: number
+        y:
+          type: number
+      required:
+        - type
+        - x
+        - y
+      description: A facial landmark point. Coordinates are normalized to the image
+        dimensions.
+    DetectFaceJsonRequest:
+      type: object
+      properties:
+        image:
+          $ref: "#/components/schemas/ImageAssetJson"
+      required:
+        - image
+    DetectFaceMultipartRequest:
+      type: object
+      properties:
+        image:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+      required:
+        - image
+    CompareFacesResponse:
+      type: object
+      properties:
+        isMatch:
+          type: boolean
+          description: True when `confidence` >= `threshold`.
+        confidence:
+          type: number
+          description: "Raw similarity score from AWS Rekognition (0–100). Note: not
+            normalized to 0–1."
+        threshold:
+          type: number
+          description: Server-side similarity threshold used for `isMatch` (0–100).
+        sourceFaceDetected:
+          type: boolean
+        targetFaceDetected:
+          type: boolean
+      required:
+        - isMatch
+        - confidence
+        - threshold
+        - sourceFaceDetected
+        - targetFaceDetected
+      description: Result of comparing a source and target face image. Returned with
+        all fields set to false / 0 when either image contains no detectable
+        face.
+    CompareFacesJsonRequest:
+      type: object
+      properties:
+        source:
+          $ref: "#/components/schemas/ImageAssetJson"
+        target:
+          $ref: "#/components/schemas/ImageAssetJson"
+      required:
+        - source
+        - target
+    CompareFacesMultipartRequest:
+      type: object
+      properties:
+        source:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+        target:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+      required:
+        - source
+        - target
+    EstimateAgeResponse:
+      type: object
+      properties:
+        faceDetected:
+          type: boolean
+        estimatedAge:
+          type: integer
+        ageRange:
+          type: object
+          properties:
+            low:
+              type: integer
+            high:
+              type: integer
+          required:
+            - low
+            - high
+        gender:
+          type: string
+          enum:
+            - male
+            - female
+        genderConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+      required:
+        - faceDetected
+      description: Age and gender estimate for the most confident detected face. When
+        `faceDetected` is false, only that field is present.
+    IdentityVerifyResponse:
+      type: object
+      properties:
+        verified:
+          type: boolean
+        document:
+          $ref: "#/components/schemas/IdentityVerifyDocument"
+        faceDetection:
+          $ref: "#/components/schemas/IdentityVerifyFaceDetection"
+        faceMatch:
+          $ref: "#/components/schemas/IdentityVerifyFaceMatch"
+        overallConfidence:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Weighted aggregate confidence across document extraction, face
+            detection, and face match (0–100).
+      required:
+        - verified
+        - document
+        - faceDetection
+        - faceMatch
+        - overallConfidence
+      description: Combined result of document scan, face detection, and face
+        comparison run in one server call.
+    IdentityVerifyDocument:
+      type: object
+      properties:
+        documentType:
+          type: string
+        fullName:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+        gender:
+          type: string
+        nationality:
+          type: string
+        documentNumber:
+          type: string
+        expirationDate:
+          type: string
+        issuingCountry:
+          type: string
+        address:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Average document-extraction confidence, 0–100.
+      required:
+        - documentType
+        - fullName
+        - firstName
+        - lastName
+        - dateOfBirth
+        - gender
+        - nationality
+        - documentNumber
+        - expirationDate
+        - issuingCountry
+        - confidence
+      description: Subset of the document-scan response embedded in the verify result.
+    IdentityVerifyFaceDetection:
+      type: object
+      properties:
+        faceDetected:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Detection confidence for the top face, 0–100.
+      required:
+        - faceDetected
+        - confidence
+    IdentityVerifyFaceMatch:
+      type: object
+      properties:
+        isMatch:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Best face-match similarity, 0–100.
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Match threshold, 0–100.
+      required:
+        - isMatch
+        - confidence
+        - threshold
+    IdentityVerifyJsonRequest:
+      type: object
+      properties:
+        documentImage:
+          $ref: "#/components/schemas/ImageAssetJson"
+        faceImage:
+          $ref: "#/components/schemas/ImageAssetJson"
+        documentType:
+          $ref: "#/components/schemas/DocumentType"
+      required:
+        - documentImage
+        - faceImage
+    IdentityVerifyMultipartRequest:
+      type: object
+      properties:
+        documentImage:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+        faceImage:
+          $ref: "#/components/schemas/ImageAssetMultipart"
+        documentType:
+          $ref: "#/components/schemas/DocumentType"
+      required:
+        - documentImage
+        - faceImage
+    CreateSessionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        session_url:
+          type: string
+        externalId:
+          type: string
+        expires_at:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+      required:
+        - id
+        - session_url
+        - links
+      description: Returned after creating a session. `session_url` is the
+        applicant-facing verification link.
+    Link:
+      type: object
+      properties:
+        rel:
+          type: string
+        href:
+          type: string
+        description:
+          type: string
+      required:
+        - rel
+        - href
+      description: HATEOAS-style link to a related resource.
+    CreateSessionRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          example: Jane
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          pattern: ^\+[1-9]\d{9,14}$
+          example: "+15192223333"
+          description: Phone number in E.164 format.
+        externalId:
+          type: string
+          description: Caller-supplied identifier echoed back on responses and queryable
+            via the list endpoint.
+        sendEmailInvite:
+          type: boolean
+          description: Send the email invite. Defaults to true.
+        sendPhoneInvite:
+          type: boolean
+          description: Send the SMS invite. Defaults to true.
+        workflowId:
+          type: string
+          description: Workflow to run for this session. Without a workflowId the session
+            is a legacy IDV verification.
+        redirectUrl:
+          type: string
+          format: uri
+          example: https://example.com/post-verify
+          description: Must use HTTPS. Applicant is sent here after completion.
+        expiresInHours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+          description: Auto-expire the session after this many hours. Range 1–8760 (1
+            year). Overrides any workflow-level expiry.
+      required:
+        - email
+        - firstName
+        - lastName
+        - phone
+      description: Body for creating an IDV/verification session. Snake_case keys are
+        also accepted.
+    ListSessionsResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionRecord"
+        next_token:
+          type:
+            - string
+            - "null"
+      required:
+        - sessions
+        - next_token
+    SessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        user_id:
+          type: string
+        sender_user_id:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        status:
+          type: string
+          description: One of PENDING, VERIFIED, REJECTED, EXPIRED.
+        type:
+          type: string
+        session_progress:
+          type: string
+        external_id:
+          type: string
+        permalink_id:
+          type: string
+        location:
+          type:
+            - string
+            - "null"
+        submitted_at:
+          type: string
+        deep_sign_id:
+          type: string
+        face_liveness_session_id:
+          type: string
+        workflow_id:
+          type: string
+        bank_statement_request_id:
+          type: string
+        redirect_url:
+          type: string
+        expires_at:
+          type: string
+        workflow_steps:
+          type: array
+          items:
+            type: string
+        meta_data:
+          type: object
+          additionalProperties: {}
+        uploads:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Map of upload slot → whether the applicant has uploaded that file.
+            Keys are session-shape specific (e.g. id_front, selfie).
+        analysis_data:
+          type: object
+          additionalProperties: {}
+          description: Free-form analysis output. Shape depends on the workflow steps run.
+      required:
+        - id
+        - organization_id
+        - user_id
+        - sender_user_id
+        - created_at
+        - updated_at
+        - status
+        - type
+        - session_progress
+      description: Server-side representation of a session.
+    GetSessionResponse:
+      type: object
+      properties:
+        session_record:
+          $ref: "#/components/schemas/SessionRecord"
+        resource_links:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of upload slot → S3 presigned GET URL for the
+            applicant-uploaded asset. URLs expire on a fixed window.
+        user:
+          type: object
+          additionalProperties: {}
+        sender_user:
+          type: object
+          additionalProperties: {}
+      required:
+        - session_record
+        - resource_links
+    UpdateSessionStatusResponse:
+      type: object
+      properties:
+        session_record:
+          $ref: "#/components/schemas/SessionRecord"
+      required:
+        - session_record
+    UpdateSessionStatusBody:
+      type: object
+      properties:
+        new_status:
+          type: string
+          enum:
+            - VERIFIED
+            - REJECTED
+      required:
+        - new_status
+    ListWorkflowsResponse:
+      type: object
+      properties:
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowSummary"
+      required:
+        - workflows
+    WorkflowSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+          description: Step ids in API form (UPPER_SNAKE).
+        created_at:
+          type: string
+      required:
+        - id
+        - name
+        - status
+        - steps
+        - created_at
+    GetWorkflowResponse:
+      type: object
+      properties:
+        workflow:
+          $ref: "#/components/schemas/Workflow"
+      required:
+        - workflow
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        organization_id:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStepResponse"
+      required:
+        - id
+        - name
+        - status
+        - organization_id
+        - created_at
+        - updated_at
+        - steps
+    WorkflowStepResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Workflow step identifier (db format, e.g. id-verification).
+        config:
+          type: object
+          additionalProperties: {}
+          description: Step-specific configuration in snake_case.
+      required:
+        - id
+        - config
+    CreateWorkflowResponse:
+      type: object
+      properties:
+        workflow:
+          $ref: "#/components/schemas/Workflow"
+      required:
+        - workflow
+    CreateWorkflowRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: KYC + Liveness
+        steps:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - ID_VERIFICATION
+                  config:
+                    type: object
+                    properties:
+                      minimum_age:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                      maximum_age:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                      expiry_date_years:
+                        type: integer
+                        minimum: 0
+                        maximum: 10
+                      require_secondary_id:
+                        type: boolean
+                      require_tertiary_id:
+                        type: boolean
+                      face_front_photo_only:
+                        type: boolean
+                      require_front_only:
+                        type: boolean
+                      enable_fraud_analysis:
+                        type: boolean
+                      escalation_type:
+                        type: string
+                        enum:
+                          - none
+                          - nfc-passport
+                      escalation_risk_threshold:
+                        type: integer
+                        minimum: 0
+                        maximum: 100
+                    additionalProperties: false
+                required:
+                  - id
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - FACE_LIVENESS
+                  config:
+                    type: object
+                    properties:
+                      confidence_threshold:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                    additionalProperties: false
+                required:
+                  - id
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - AGE_ESTIMATION
+                  config:
+                    type: object
+                    properties:
+                      minimum_age:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                    additionalProperties: false
+                required:
+                  - id
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - PEP_SANCTIONS
+                required:
+                  - id
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - ADVERSE_MEDIA
+                required:
+                  - id
+          minItems: 1
+          maxItems: 10
+          description: Ordered list of unique workflow steps. Max 10 steps; each id may
+            appear at most once.
+      required:
+        - name
+        - steps
+      description: Body for creating a workflow.
+    CreateBankStatementResponse:
+      type: object
+      properties:
+        bankStatementId:
+          type: string
+        bankStatementUrl:
+          type: string
+        externalId:
+          type: string
+        links:
+          type: array
+          items: {}
+      required:
+        - bankStatementId
+        - bankStatementUrl
+        - links
+    CreateBankStatementRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          example: Jane
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          pattern: ^\+[1-9]\d{9,14}$
+          example: "+15192223333"
+        period:
+          type: string
+          enum:
+            - "3"
+            - "6"
+            - "9"
+          default: "3"
+          description: Lookback window in months for the bank statement.
+        externalId:
+          type: string
+        sendEmailInvite:
+          type: boolean
+        sendPhoneInvite:
+          type: boolean
+      required:
+        - email
+        - firstName
+        - lastName
+        - phone
+    ListBankStatementsResponse:
+      type: object
+      properties:
+        bankStatements:
+          type: array
+          items:
+            $ref: "#/components/schemas/BankStatementRecord"
+        nextToken:
+          type:
+            - string
+            - "null"
+      required:
+        - bankStatements
+        - nextToken
+    BankStatementRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        userId:
+          type: string
+        senderUserId:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        status:
+          type: string
+        type:
+          type: string
+        externalId:
+          type: string
+        Config:
+          type: object
+          additionalProperties: {}
+        statement:
+          type: object
+          additionalProperties: {}
+          description: Parsed bank-statement payload. Only present when status is completed.
+      required:
+        - id
+        - organizationId
+        - userId
+        - senderUserId
+        - createdAt
+        - updatedAt
+        - status
+        - type
+    CreateCreditTermsResponse:
+      type: object
+      properties:
+        creditTermsId:
+          type: string
+        creditTermsUrl:
+          type: string
+        externalId:
+          type: string
+        links:
+          type: array
+          items: {}
+      required:
+        - creditTermsId
+        - creditTermsUrl
+        - links
+    CreateCreditTermsRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Jane
+        lastName:
+          type: string
+          example: Doe
+        businessName:
+          type: string
+          example: Acme Co.
+        businessEmail:
+          type: string
+          example: ap@acme.com
+        businessAddress:
+          type: string
+        requestedCreditAmount:
+          type: number
+          minimum: 0
+          example: 25000
+        requestedCreditPeriod:
+          type: string
+          enum:
+            - "30"
+            - "60"
+            - "90"
+          default: "30"
+          description: Net terms in days requested by the applicant.
+        externalId:
+          type: string
+        sendEmailInvite:
+          type: boolean
+      required:
+        - firstName
+        - lastName
+        - businessName
+        - businessEmail
+        - businessAddress
+        - requestedCreditAmount
+    ListCreditTermsResponse:
+      type: object
+      properties:
+        creditTerms:
+          type: array
+          items:
+            $ref: "#/components/schemas/BankStatementRecord"
+        nextToken:
+          type:
+            - string
+            - "null"
+      required:
+        - creditTerms
+        - nextToken
+    CreateCreditCheckResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        session_url:
+          type: string
+        type:
+          type: string
+          description: Resolved session type — credit-check-hard or credit-check-soft.
+        externalId:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+      required:
+        - id
+        - session_url
+        - type
+        - links
+    CreateCreditCheckRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          example: Jane
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          pattern: ^\+[1-9]\d{9,14}$
+          example: "+15192223333"
+          description: Phone number in E.164 format.
+        externalId:
+          type: string
+        sendEmailInvite:
+          type: boolean
+        sendPhoneInvite:
+          type: boolean
+        redirectUrl:
+          type: string
+          format: uri
+          description: HTTPS URL the applicant is sent to after completing the check.
+        uat:
+          type: boolean
+          description: When true, the session is created for UAT and is not billed.
+            Equifax inquiry is skipped.
+        uatType:
+          type: string
+          description: UAT scenario id. Only meaningful when uat=true.
+      required:
+        - email
+        - firstName
+        - lastName
+        - phone
+      description: Body for creating a hard or soft credit-check session. Snake_case
+        keys are also accepted.
+    ListOAuthClientsResponse:
+      type: object
+      properties:
+        clients:
+          type: array
+          items:
+            $ref: "#/components/schemas/OAuthClient"
+      required:
+        - clients
+    OAuthClient:
+      type: object
+      properties:
+        client_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        credential_source:
+          type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+        token_endpoint_auth_methods:
+          type: array
+          items:
+            type: string
+        bound_user:
+          $ref: "#/components/schemas/OAuthBoundUser"
+        api_key_id:
+          type: string
+        sandbox:
+          type: boolean
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        last_used_at:
+          type: string
+        integration_status:
+          type: string
+      required:
+        - client_id
+        - name
+        - description
+        - type
+        - credential_source
+        - redirect_uris
+        - token_endpoint_auth_methods
+        - bound_user
+        - api_key_id
+        - sandbox
+        - integration_status
+      description: Representation of the single derived OAuth client bound to the
+        caller's API key.
+    OAuthBoundUser:
+      type: object
+      properties:
+        userId:
+          type: string
+        organizationId:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+      required:
+        - userId
+        - organizationId
+        - username
+        - displayName
+    OAuthMutationUnsupportedResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+      description: Returned with HTTP 410 from create/rotate/revoke endpoints. Clients
+        are derived from the caller's API key and cannot be mutated separately.
+    OAuthClientCreateBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        type:
+          $ref: "#/components/schemas/OAuthClientType"
+        redirectUris:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          description: Required when type is custom; otherwise inferred from preset.
+      required:
+        - name
+        - type
+      description: "Body for creating an OAuth client. NOTE: this endpoint currently
+        returns 410 — clients are derived from the caller's API key."
+    OAuthClientType:
+      type: string
+      enum:
+        - claude
+        - custom
+    PresignUrlResponse:
+      type: object
+      properties:
+        uploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/PresignUrlEntry"
+      required:
+        - uploads
+    PresignUrlEntry:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+          description: S3 presigned PUT URL. Send the file as the request body.
+        fileKey:
+          type: string
+          description: S3 object key that the file will live under once uploaded. Pass
+            this key to downstream endpoints (e.g. /v1/document/scan) in place
+            of the binary payload.
+      required:
+        - uploadUrl
+        - fileKey
+    PresignUrlRequest:
+      type: object
+      properties:
+        contentType:
+          type: string
+          example: image/jpeg
+          description: MIME type of the file the caller intends to upload. The presigned
+            URL is bound to this content type.
+        count:
+          type: number
+          minimum: 1
+          example: 1
+          description: Number of presigned URLs to generate.
+      required:
+        - count
+  parameters: {}
+paths:
+  /v1/document/scan:
+    post:
+      tags:
+        - Document
+      summary: Scan an identity document
+      description: Extracts structured identity data (name, date of birth, document
+        number, etc.) from a single document image via AWS Textract AnalyzeID.
+        Accepts the image as a multipart upload, a base64/base64url-encoded JSON
+        string, or an S3 object key from a previously presigned upload.
+      security: &a1
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanDocumentJsonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ScanDocumentMultipartRequest"
+      responses:
+        "200":
+          description: Successful scan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanDocumentResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/face/detect:
+    post:
+      tags:
+        - Face
+      summary: Detect a face in an image
+      description: "Returns the highest-confidence detected face with its bounding box
+        and facial landmarks. When no face is detected, returns `faceDetected:
+        false` with `confidence: 0`."
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetectFaceJsonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DetectFaceMultipartRequest"
+      responses:
+        "200":
+          description: Detection result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectFaceResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/face/compare:
+    post:
+      tags:
+        - Face
+      summary: Compare a source face image to a target face image
+      description: Returns the similarity between two face images. `isMatch` is true
+        when similarity meets the server-side threshold.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareFacesJsonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CompareFacesMultipartRequest"
+      responses:
+        "200":
+          description: Comparison result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareFacesResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/face/estimate-age:
+    post:
+      tags:
+        - Face
+      summary: Estimate age and gender from a face image
+      description: Returns an estimated age, age range, and gender for the
+        highest-confidence detected face in the image.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetectFaceJsonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DetectFaceMultipartRequest"
+      responses:
+        "200":
+          description: Age and gender estimate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateAgeResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/identity/verify:
+    post:
+      tags:
+        - Identity
+      summary: Verify identity from a document image and a selfie
+      description: Runs document scan, face detection on the selfie, and face
+        comparison between the document portrait and the selfie in a single
+        server call. Returns the combined result plus a weighted overall
+        confidence score.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityVerifyJsonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/IdentityVerifyMultipartRequest"
+      responses:
+        "200":
+          description: Combined verification result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityVerifyResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Create and send a verification session
+      description: Creates an IDV session for an applicant and (by default) sends an
+        email and SMS invite with the verification link. Pass a `workflowId` to
+        run a custom workflow; omit it for legacy IDV.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "200":
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Organization has insufficient credits and is not subscribed to the
+            IDV service.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags:
+        - Sessions
+      summary: List sessions
+      description: Returns sessions for the caller. Defaults to sessions sent by the
+        authenticated user; pass `by_organization=true` to widen the scope or
+        `external_id` / `workflow_id` to filter.
+      security: *a1
+      parameters:
+        - schema:
+            type: number
+            minimum: 1
+            maximum: 500
+            description: Page size, default 50.
+          required: false
+          description: Page size, default 50.
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: next_token
+          in: query
+        - schema:
+            type: string
+            description: ISO 8601 lower bound for created_at.
+          required: false
+          description: ISO 8601 lower bound for created_at.
+          name: start_date
+          in: query
+        - schema:
+            type: string
+            description: ISO 8601 upper bound for created_at.
+          required: false
+          description: ISO 8601 upper bound for created_at.
+          name: end_date
+          in: query
+        - schema:
+            type:
+              - boolean
+              - "null"
+            description: When true, returns sessions across the whole organization rather
+              than just those sent by the calling user.
+          required: false
+          description: When true, returns sessions across the whole organization rather
+            than just those sent by the calling user.
+          name: by_organization
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: external_id
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: workflow_id
+          in: query
+      responses:
+        "200":
+          description: Page of sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSessionsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/sessions/{id}:
+    get:
+      tags:
+        - Sessions
+      summary: Fetch a session by id
+      description: Returns the session record along with presigned GET URLs for any
+        applicant-uploaded assets.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Session detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetSessionResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/sessions/{id}/update-status:
+    patch:
+      tags:
+        - Sessions
+      summary: Manually set a session's status
+      description: Overrides a session's status to VERIFIED or REJECTED. Intended for
+        manual review flows.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSessionStatusBody"
+      responses:
+        "200":
+          description: Updated session record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateSessionStatusResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/idv:
+    post:
+      tags:
+        - Sessions
+      summary: Create and send a verification session (deprecated alias)
+      description: Deprecated alias for `POST /v1/sessions`. New integrations should
+        use `/v1/sessions`.
+      deprecated: true
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "200":
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/workflows:
+    get:
+      tags:
+        - Workflows
+      summary: List workflows
+      description: Returns all workflows belonging to the calling organization,
+        ordered by creation time descending.
+      security: *a1
+      responses:
+        "200":
+          description: Workflows for the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkflowsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Workflows
+      summary: Create a workflow
+      description: Creates a workflow composed of up to 10 ordered, unique steps. Step
+        ids must be one of ID_VERIFICATION, FACE_LIVENESS, AGE_ESTIMATION,
+        PEP_SANCTIONS, ADVERSE_MEDIA.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkflowRequest"
+      responses:
+        "201":
+          description: Workflow created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateWorkflowResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/workflows/{id}:
+    get:
+      tags:
+        - Workflows
+      summary: Fetch a workflow by id
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Workflow detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetWorkflowResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/financial:
+    post:
+      tags:
+        - Financial
+      summary: Create and send a bank statement request
+      description: Creates a bank statement request for an applicant. By default sends
+        an email and SMS invite linking to the applicant-facing flow.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBankStatementRequest"
+      responses:
+        "200":
+          description: Bank statement request created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateBankStatementResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Organization has insufficient credits and is not subscribed to the
+            bank statement service.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags:
+        - Financial
+      summary: List bank statements
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+            description: Base64-encoded continuation token returned by a previous page.
+          required: false
+          description: Base64-encoded continuation token returned by a previous page.
+          name: nextToken
+          in: query
+      responses:
+        "200":
+          description: Page of bank statements.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListBankStatementsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/financial/{id}:
+    get:
+      tags:
+        - Financial
+      summary: Fetch a bank statement by id
+      description: Returns the bank statement record. When the request is completed
+        the response includes the parsed statement payload.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Bank statement record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankStatementRecord"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/financial/externalId/{externalId}:
+    get:
+      tags:
+        - Financial
+      summary: List bank statements by external id
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: externalId
+          in: path
+        - schema:
+            type: string
+            description: Base64-encoded continuation token returned by a previous page.
+          required: false
+          description: Base64-encoded continuation token returned by a previous page.
+          name: nextToken
+          in: query
+      responses:
+        "200":
+          description: Page of bank statements matching the external id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListBankStatementsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-terms:
+    post:
+      tags:
+        - Credit Terms
+      summary: Create and send a credit terms application request
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreditTermsRequest"
+      responses:
+        "200":
+          description: Credit terms request created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCreditTermsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Organization has insufficient credits and is not subscribed to the
+            service.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags:
+        - Credit Terms
+      summary: List credit terms applications
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: nextToken
+          in: query
+      responses:
+        "200":
+          description: Page of credit terms records.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCreditTermsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-terms/{id}:
+    get:
+      tags:
+        - Credit Terms
+      summary: Fetch a credit terms record by id
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Credit terms record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankStatementRecord"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-terms/externalId/{externalId}:
+    get:
+      tags:
+        - Credit Terms
+      summary: List credit terms records by external id
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: externalId
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: nextToken
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: nextToken
+          in: query
+      responses:
+        "200":
+          description: Page of credit terms records matching the external id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCreditTermsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-check/hard:
+    post:
+      tags:
+        - Credit Check
+      summary: Create and send a hard credit check session
+      description: Creates a session of type credit-check-hard. Equifax hard inquiry
+        runs once the applicant completes the flow.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreditCheckRequest"
+      responses:
+        "200":
+          description: Credit-check session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCreditCheckResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Organization has insufficient credits.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-check/soft:
+    post:
+      tags:
+        - Credit Check
+      summary: Create and send a soft credit check session
+      description: Creates a session of type credit-check-soft. Equifax soft inquiry
+        runs once the applicant completes the flow.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreditCheckRequest"
+      responses:
+        "200":
+          description: Credit-check session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCreditCheckResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Organization has insufficient credits.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-checks:
+    get:
+      tags:
+        - Credit Checks
+      summary: List credit checks (preview)
+      description: Returns 501 — Credit Checks read API is not yet generally
+        available. Use a sandbox API key to preview test responses.
+      security: *a1
+      responses:
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "501":
+          description: Credit Checks read API is not yet generally available. Use a
+            sandbox API key to preview test responses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/credit-checks/{id}:
+    get:
+      tags:
+        - Credit Checks
+      summary: Fetch a credit check by id (preview)
+      description: Returns 501 — Credit Checks read API is not yet generally
+        available. Use a sandbox API key to preview test responses.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "501":
+          description: Credit Checks read API is not yet generally available. Use a
+            sandbox API key to preview test responses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/oauth-clients:
+    get:
+      tags:
+        - OAuth Clients
+      summary: List OAuth clients
+      description: Returns the single derived OAuth client bound to the caller's API
+        key. There is no separate per-client registration.
+      security: *a1
+      responses:
+        "200":
+          description: OAuth client list (always exactly one entry).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListOAuthClientsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - OAuth Clients
+      summary: Create an OAuth client (unsupported)
+      description: Always returns 410. OAuth clients are derived from the caller's API
+        key and cannot be created separately.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthClientCreateBody"
+      responses:
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: OAuth clients are no longer managed separately.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthMutationUnsupportedResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/oauth-clients/{clientId}/rotate-secret:
+    post:
+      tags:
+        - OAuth Clients
+      summary: Rotate an OAuth client secret (unsupported)
+      description: Always returns 410. Rotate the bound API key in the deepidv
+        dashboard instead.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: clientId
+          in: path
+      responses:
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Operation no longer supported.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthMutationUnsupportedResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/oauth-clients/{clientId}/revoke:
+    post:
+      tags:
+        - OAuth Clients
+      summary: Revoke an OAuth client (unsupported)
+      description: Always returns 410. Revoke the bound API key in the deepidv
+        dashboard instead.
+      security: *a1
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: clientId
+          in: path
+      responses:
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Operation no longer supported.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthMutationUnsupportedResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/upload/presign:
+    post:
+      tags:
+        - Upload
+      summary: Generate presigned S3 upload URLs
+      description: Generates one or more S3 presigned PUT URLs. Use these to upload
+        binaries (e.g. images for document scan, face detect, etc.) directly to
+        S3, then pass the returned `fileKey` to downstream endpoints in place of
+        the binary payload.
+      security: *a1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URLs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignUrlResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+webhooks: {}
