@@ -135,16 +135,17 @@ Each entry in `attempts` has the following shape:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `reason` | string | The check that failed. Currently one of `NO_FACE_DETECTED`, `OCR_NAME_MISSING`, or `DOC_TYPE_NOT_ALLOWED`. New values may be added over time — consumers should treat this as an open string. |
+| `reason` | string | The check that failed. One of `NO_FACE_DETECTED`, `OCR_NAME_MISSING`, `DOC_TYPE_NOT_ALLOWED`, `ID_TYPE_UNRECOGNIZED`, or `ID_TYPE_LOW_CONFIDENCE`. The two `ID_TYPE_*` values are emitted only when the workflow's ID confidence threshold is enabled (driver's licence / passport): `ID_TYPE_UNRECOGNIZED` when the document type could not be read, and `ID_TYPE_LOW_CONFIDENCE` when it was read below the configured confidence. New values may be added over time — consumers should treat this as an open string. |
 | `slot` | string \| null | Which ID slot the failure applies to: `PRIMARY`, `SECONDARY`, `TERTIARY`, or `null` when the failure is not slot-specific. |
 | `failedAt` | string | ISO 8601 timestamp of when the attempt was recorded |
 
 ```json
 "failureData": {
-  "failedAttempts": 2,
+  "failedAttempts": 3,
   "attempts": [
     { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2026-05-26T15:30:00.000Z" },
-    { "reason": "OCR_NAME_MISSING", "slot": "SECONDARY", "failedAt": "2026-05-26T15:32:14.000Z" }
+    { "reason": "OCR_NAME_MISSING", "slot": "SECONDARY", "failedAt": "2026-05-26T15:32:14.000Z" },
+    { "reason": "ID_TYPE_LOW_CONFIDENCE", "slot": "PRIMARY", "failedAt": "2026-05-26T15:34:02.000Z" }
   ]
 }
 ```
