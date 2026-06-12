@@ -169,7 +169,7 @@ Returns a `VERIFIED` session with every possible field populated. Use this to va
 
 #### `test_rejected`
 
-Returns a `REJECTED` session with basic analysis data — failing face match and ID checks.
+Returns a `REJECTED` session with basic analysis data — failing face match and ID checks. When the rejection came from AI auto-decline, `meta_data.declinedData` records the decisive reason:
 
 | Field | Value |
 |-------|-------|
@@ -178,6 +178,24 @@ Returns a `REJECTED` session with basic analysis data — failing face match and
 | `id_matches_selfie` | `false` |
 | `expiry_date_pass` | `false` |
 | `valid_state_pass` | `false` |
+
+```json
+"meta_data": {
+  "declinedData": {
+    "declined": true,
+    "score": 2,
+    "declinedAt": "2025-01-15T10:43:00.000Z",
+    "reason": {
+      "code": "LOW_FACE_MATCH",
+      "detail": "Face match confidence is low",
+      "slot": "PRIMARY",
+      "severity": "CRITICAL"
+    }
+  }
+}
+```
+
+See [`declinedData`](/api-reference/sessions/retrieve-session#declined-data-object) for the full field reference.
 
 #### `test_submitted`
 
