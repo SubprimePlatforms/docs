@@ -1,0 +1,220 @@
+---
+title: "Reference: Screening"
+description: "client.screening reference — pepSanctions, adverseMedia (async handle), and titleCheck, with inline types, the AdverseMediaHandle API, and runnable examples."
+---
+
+Silent-screening operations. Access them via `client.screening`. `pepSanctions` and `titleCheck` are **synchronous**; `adverseMedia` is **async** and returns an `AdverseMediaHandle` you poll for the result.
+
+<Note>
+  `pepSanctions` and `titleCheck` are sent with retries disabled (`maxRetries: 0`). The server bounds an un-cancellable upstream and returns `503` ([`ServiceUnavailableError`](/integrate/sdks/typescript/server/error-handling#serviceunavailableerror--http-503)) on breach without billing — an immediate retry would hit the same slow path, so the SDK fails fast. Back off and retry yourself.
+</Note>
+
+## `pepSanctions(input)`
+
+```typescript
+pepSanctions(input: PepSanctionsInput): Promise<PepSanctionsResult>
+```
+
+Run a synchronous PEP & sanctions screening against global watchlists.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.email` | `string` | Yes | Subject's email address |
+| `input.firstName` | `string` | Yes | First name (1–255 chars) |
+| `input.lastName` | `string` | Yes | Last name (1–255 chars) |
+| `input.dateOfBirth` | `string` | Yes | Date of birth, ISO 8601 (`YYYY-MM-DD`) |
+
+**Returns** `PepSanctionsResult`:
+
+```typescript
+interface PepSanctionsResult {
+  totalMatches: number;
+  peps: PepSanctionsMatch[]; // matched as a politically exposed person
+  sanctions: PepSanctionsMatch[]; // matched on a sanctions list
+  both: PepSanctionsMatch[]; // matched as PEP *and* sanctioned
+  searchedSources: string[]; // datasets/sources queried
+}
+
+interface PepSanctionsMatch {
+  name: string;
+  country: string | null;
+  dateOfBirth: string | null;
+  confidence: number; // 0–1
+  datasets: string[];
+}
+```
+
+**Throws** `ValidationError` (400), `AuthenticationError` (401), `InsufficientFundsError` (402), `RateLimitError` (429), `ServiceUnavailableError` (503), `DeepIDVError`.
+
+```typescript
+const result = await client.screening.pepSanctions({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  dateOfBirth: '1980-05-12',
+});
+
+console.log(`${result.totalMatches} matches across ${result.searchedSources.length} sources`);
+for (const match of result.sanctions) {
+  console.log(`${match.name} — ${match.confidence} (${match.datasets.join(', ')})`);
+}
+```
+
+**See also:** REST [PEP & Sanctions](/api-reference/silent-screening/pep-sanctions).
+
+## `adverseMedia(input)`
+
+```typescript
+adverseMedia(input: AdverseMediaInput): Promise<AdverseMediaHandle>
+```
+
+Queue an **async** adverse-media screening. The POST returns a `jobId` immediately; the SDK wraps it in an `AdverseMediaHandle` so you can `.wait()` for the result or `.refresh()` for a single snapshot.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.email` | `string` | Yes | Subject's email address |
+| `input.firstName` | `string` | Yes | First name (1–255 chars) |
+| `input.lastName` | `string` | Yes | Last name (1–255 chars) |
+| `input.dateOfBirth` | `string` | Yes | Date of birth, ISO 8601 (`YYYY-MM-DD`) |
+| `input.country` | `string` | No | ISO 3166-1 alpha-2 country code (e.g. `'US'`). Case-insensitive; normalized to uppercase |
+| `input.idempotencyKey` | `string` | No | Sent as the `Idempotency-Key` header. Omit to let the SDK generate a UUID v4 per call |
+
+<Tip>
+  Leave `idempotencyKey` unset and the SDK auto-generates a UUID v4 for each call, so customer retries (network blips, batch restarts) are safe by default. Server-side dedup TTL is 24 hours — re-sending the same key replays the same job.
+</Tip>
+
+**Returns** an `AdverseMediaHandle`:
+
+```typescript
+interface AdverseMediaHandle {
+  readonly jobId: string;
+  wait(options?: AdverseMediaWaitOptions): Promise<AdverseMediaResult>;
+  refresh(): Promise<AdverseMediaJobSnapshot>;
+}
+
+interface AdverseMediaWaitOptions {
+  pollIntervalMs?: number; // default 2000
+  timeoutMs?: number; // default 180000 (3 min)
+}
+```
+
+- **`wait(options?)`** — auto-polls until the job reaches `ready` or `failed`, returning the typed `AdverseMediaResult`. Throws `AdverseMediaFailedError` if the job fails, or `PollTimeoutError` if `timeoutMs` elapses first. A poll timeout does **not** mean the job died — resume later with [`client.asyncJobs.get(jobId)`](/integrate/sdks/typescript/server/reference/async-jobs-events).
+- **`refresh()`** — performs a single non-blocking poll and returns the current `AdverseMediaJobSnapshot`.
+
+**Result and snapshot types:**
+
+```typescript
+interface AdverseMediaResult {
+  totalHits: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  riskScore: number; // 0–100
+  summary: string;
+  findings: AdverseMediaFinding[];
+  exposuresByCategory: Record<ExposureCategory, { hits: number; articles: AdverseMediaArticle[] }>;
+}
+
+type AdverseMediaJobSnapshot =
+  | { status: 'pending' }
+  | { status: 'processing' }
+  | { status: 'ready'; result: AdverseMediaResult }
+  | { status: 'failed'; error: string };
+```
+
+**`adverseMedia()` throws** `ValidationError` (400), `AuthenticationError` (401), `InsufficientFundsError` (402), `RateLimitError` (429), `DeepIDVError`. The handle's `wait()` additionally throws `AdverseMediaFailedError` and `PollTimeoutError`.
+
+```typescript
+import { AdverseMediaFailedError, PollTimeoutError } from '@deepidv/server';
+
+const handle = await client.screening.adverseMedia({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  dateOfBirth: '1980-05-12',
+  country: 'US',
+});
+
+console.log(`Queued job ${handle.jobId}`);
+
+try {
+  // Block until the job completes (auto-polling every 2s, up to 3 min)
+  const result = await handle.wait();
+  console.log(`Risk: ${result.riskLevel} (${result.riskScore}/100), ${result.totalHits} hits`);
+} catch (err) {
+  if (err instanceof AdverseMediaFailedError) {
+    console.error(`Job ${err.jobId} failed`);
+  } else if (err instanceof PollTimeoutError) {
+    // Not dead — keep the jobId and poll later
+    console.warn(`Still running after ${err.timeoutMs}ms; resume with asyncJobs.get('${err.jobId}')`);
+  } else {
+    throw err;
+  }
+}
+```
+
+For a non-blocking single check:
+
+```typescript
+const snapshot = await handle.refresh();
+if (snapshot.status === 'ready') {
+  console.log(snapshot.result.riskLevel);
+}
+```
+
+**See also:** REST [Adverse Media](/api-reference/silent-screening/adverse-media) and [Get Async Job](/api-reference/async-jobs/get-async-job).
+
+## `titleCheck(input)`
+
+```typescript
+titleCheck(input: TitleCheckInput): Promise<TitleCheckResult>
+```
+
+Run a synchronous property title / address search. The server geocodes the address via Google Places (currently US-only).
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.email` | `string` | Yes | Subject's email address |
+| `input.firstName` | `string` | Yes | First name (1–255 chars) |
+| `input.lastName` | `string` | Yes | Last name (1–255 chars) |
+| `input.address` | `string` | Yes | Free-text postal address (1–500 chars) |
+
+**Returns** `TitleCheckResult` — a discriminated union on `status`:
+
+```typescript
+type TitleCheckResult =
+  | { status: 'found'; subjectProperty: SubjectProperty | null; ownerInformation: OwnerInformation | null; /* ...location, transfer, last-sale */ }
+  | { status: 'multiple_properties'; message: string; availableUnits: string[]; properties: Array<{ owner: string; apartmentOrUnit: string }> }
+  | { status: 'unsupported_region'; message: string }
+  | { status: 'not_found'; message: string };
+```
+
+<Warning>
+  `unsupported_region` is a typed **result**, not an error — the server returns HTTP 200 for all four variants, including when the address falls outside the supported region. Branch on `status` rather than catching.
+</Warning>
+
+**Throws** `ValidationError` (400), `AuthenticationError` (401), `InsufficientFundsError` (402), `RateLimitError` (429), `ServiceUnavailableError` (503), `DeepIDVError`.
+
+```typescript
+const result = await client.screening.titleCheck({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  address: '1600 Amphitheatre Parkway, Mountain View, CA',
+});
+
+switch (result.status) {
+  case 'found':
+    console.log(result.subjectProperty?.PropertyFullStreetAddress);
+    break;
+  case 'multiple_properties':
+    console.log(`Disambiguate: ${result.availableUnits.join(', ')}`);
+    break;
+  case 'unsupported_region':
+    console.log(result.message);
+    break;
+  case 'not_found':
+    console.log('No title record found');
+    break;
+}
+```
+
+**See also:** REST [Title Check](/api-reference/silent-screening/title-check).

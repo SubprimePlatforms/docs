@@ -1,0 +1,125 @@
+---
+title: Quickstart
+description: Install @deepidv/server, initialize the client, and get identity verification results in under two minutes.
+---
+
+Get from zero to a verification result in under two minutes.
+
+## 1. Install
+
+<CodeGroup>
+```bash npm
+npm install @deepidv/server
+```
+
+```bash pnpm
+pnpm add @deepidv/server
+```
+
+```bash yarn
+yarn add @deepidv/server
+```
+
+```bash bun
+bun add @deepidv/server
+```
+</CodeGroup>
+
+## 2. Initialize the client
+
+Create one client and reuse it across requests. The API key is read from an environment variable — never hardcode it.
+
+```typescript
+import { DeepIDV } from '@deepidv/server';
+
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+});
+```
+
+<Tip>
+  Get an API key from the [API Authentication](/authentication) page in your deepidv account.
+</Tip>
+
+## 3. Create a verification session
+
+The fastest path to a verified identity — create a hosted session and send the user to the returned URL:
+
+```typescript
+const session = await client.sessions.create({
+  firstName: 'Jane',
+  lastName: 'Doe',
+  email: 'jane@example.com',
+  phone: '+15551234567',
+});
+
+console.log(session.sessionUrl);
+// → "https://verify.deepidv.com/session/abc123"
+// Send this URL to your user
+```
+
+When the user finishes, retrieve the result with `client.sessions.retrieve(session.id)`. See the [Session Verification guide](/integrate/sdks/typescript/server/session-verification) for the full flow.
+
+## Prefer to build your own flow?
+
+If you handle the applicant UI yourself, call the primitives directly.
+
+### Scan a document
+
+```typescript
+import { readFileSync } from 'node:fs';
+
+const result = await client.document.scan({
+  image: readFileSync('drivers-license.jpg'),
+});
+
+console.log(result.fullName); // "Jane Doe"
+console.log(result.dateOfBirth); // "1990-01-15"
+console.log(result.documentNumber); // "D1234567"
+console.log(result.confidence); // 0.97
+```
+
+### Compare two faces
+
+```typescript
+const match = await client.face.compare({
+  source: readFileSync('id-photo.jpg'),
+  target: readFileSync('selfie.jpg'),
+});
+
+console.log(match.isMatch); // true
+console.log(match.confidence); // 94 (0–100 scale)
+```
+
+### Full identity verification
+
+Document scan + face detection + face comparison in a single call:
+
+```typescript
+const verification = await client.identity.verify({
+  documentImage: readFileSync('passport.jpg'),
+  faceImage: readFileSync('selfie.jpg'),
+});
+
+console.log(verification.verified); // true
+console.log(verification.overallConfidence); // 96
+console.log(verification.document.fullName); // "Jane Doe"
+console.log(verification.faceMatch.isMatch); // true
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/integrate/sdks/typescript/server/authentication">
+    API key setup and security best practices.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/integrate/sdks/typescript/server/configuration">
+    Timeouts, retries, base URL, and custom fetch.
+  </Card>
+  <Card title="Server-to-Server" icon="server" href="/integrate/sdks/typescript/server/server-to-server">
+    Build a custom verification pipeline.
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/integrate/sdks/typescript/server/error-handling">
+    Typed errors, the decision tree, and retry semantics.
+  </Card>
+</CardGroup>

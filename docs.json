@@ -129,6 +129,32 @@
               "integrate/ai-agent-integration",
               "integrate/verify-skill"
             ]
+          },
+          {
+            "group": "TypeScript",
+            "pages": [
+              {
+                "group": "Server SDK",
+                "pages": [
+                  "integrate/sdks/typescript/server/overview",
+                  "integrate/sdks/typescript/server/quickstart",
+                  "integrate/sdks/typescript/server/authentication",
+                  "integrate/sdks/typescript/server/configuration",
+                  "integrate/sdks/typescript/server/session-verification",
+                  "integrate/sdks/typescript/server/server-to-server",
+                  "integrate/sdks/typescript/server/error-handling"
+                ]
+              },
+              {
+                "group": "Server SDK Reference",
+                "pages": [
+                  "integrate/sdks/typescript/server/reference/sessions",
+                  "integrate/sdks/typescript/server/reference/document-face-identity",
+                  "integrate/sdks/typescript/server/reference/screening",
+                  "integrate/sdks/typescript/server/reference/async-jobs-events"
+                ]
+              }
+            ]
           }
         ]
       },

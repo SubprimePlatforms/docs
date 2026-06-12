@@ -1,0 +1,127 @@
+---
+title: Configuration
+description: Every @deepidv/server client option — baseUrl, timeouts, retries, and custom fetch — with defaults, retry/timeout behavior, and validation rules.
+---
+
+Every option accepted by the `DeepIDV` constructor, with defaults and behavior.
+
+## Options
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `apiKey` | `string` | **(required)** | API key for `x-api-key` authentication. Must be non-empty. |
+| `baseUrl` | `string` | `"https://api.deepidv.com"` | API base URL. Override for staging/testing environments. |
+| `timeout` | `number` | `30000` (30s) | Per-attempt timeout for API requests, in milliseconds. Each retry attempt gets its own fresh timer. |
+| `uploadTimeout` | `number` | `120000` (2 min) | Per-attempt timeout for S3 file uploads, in milliseconds. Separate from `timeout` because uploads are larger and slower. |
+| `maxRetries` | `number` | `3` | Maximum retry attempts for `429` and `5xx` responses. Set to `0` to disable retries. |
+| `initialRetryDelay` | `number` | `500` (ms) | Initial delay for exponential-backoff calculation. |
+| `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation. Useful for proxies, mTLS, service bindings, and testing. |
+
+## Retry & timeout behavior
+
+**Retries.** The SDK automatically retries only **transient** failures — HTTP `429` (rate limited) and `5xx` (server errors). It never retries `4xx` client errors, since those indicate a bug in the request that a retry won't fix. After `maxRetries` attempts are exhausted, the original typed error (e.g. `RateLimitError`) is thrown.
+
+<Note>
+  A few methods opt out of retries deliberately. `screening.pepSanctions` and `screening.titleCheck` are sent with `maxRetries: 0` because the server bounds an un-cancellable upstream and returns `503` on breach without billing — an immediate retry would just hit the same slow path. See [Screening](/integrate/sdks/typescript/server/reference/screening).
+</Note>
+
+**Backoff.** Delay between attempts uses exponential backoff with jitter: `random(0, initialRetryDelay * 2^attempt)`. When a `429` carries a `Retry-After` header, that value is respected.
+
+**Timeouts.** `timeout` and `uploadTimeout` are **per attempt**, not total — every retry gets a fresh timer. A single attempt exceeding its budget throws a [`TimeoutError`](/integrate/sdks/typescript/server/error-handling).
+
+You can observe retries and timing in real time via the [`retry` and `response` events](/integrate/sdks/typescript/server/reference/async-jobs-events).
+
+## Examples
+
+### Minimal
+
+```typescript
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+});
+```
+
+### Full configuration
+
+```typescript
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+  baseUrl: 'https://api-staging.deepidv.com',
+  timeout: 15_000,
+  uploadTimeout: 60_000,
+  maxRetries: 5,
+  initialRetryDelay: 1_000,
+  fetch: customFetch,
+});
+```
+
+### No retries
+
+```typescript
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+  maxRetries: 0,
+});
+```
+
+### Fast timeout (low-latency use case)
+
+```typescript
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+  timeout: 5_000, // 5s for API calls
+  uploadTimeout: 30_000, // 30s for uploads
+  maxRetries: 1, // only one retry
+});
+```
+
+### Custom fetch with a proxy
+
+```typescript
+import { ProxyAgent } from 'undici';
+
+const dispatcher = new ProxyAgent('https://proxy.internal:8080');
+
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+  fetch: (url, init) => fetch(url, { ...init, dispatcher }),
+});
+```
+
+### Cloudflare Workers service binding
+
+```typescript
+const client = new DeepIDV({
+  apiKey: env.DEEPIDV_API_KEY,
+  fetch: env.DEEPIDV_SERVICE.fetch.bind(env.DEEPIDV_SERVICE),
+});
+```
+
+## Validation
+
+All options are validated synchronously at construction time with a Zod schema (`DeepIDVConfigSchema`). Validation failures throw a [`ValidationError`](/integrate/sdks/typescript/server/error-handling) before any network call:
+
+| Validation | Error message |
+| ---------- | ------------- |
+| `apiKey` missing or empty | `apiKey is required` |
+| `baseUrl` not a valid URL | `Invalid url` |
+| `timeout` not positive | `Number must be greater than 0` |
+| `uploadTimeout` not positive | `Number must be greater than 0` |
+| `maxRetries` negative or non-integer | `Number must be greater than or equal to 0` |
+| `initialRetryDelay` not positive | `Number must be greater than 0` |
+
+## Resolved configuration
+
+After construction, all defaults are applied. The internal resolved shape has every field required:
+
+```typescript
+interface ResolvedConfig {
+  apiKey: string; // from user
+  baseUrl: string; // "https://api.deepidv.com" (trailing slash stripped)
+  timeout: number; // 30000
+  uploadTimeout: number; // 120000
+  maxRetries: number; // 3
+  initialRetryDelay: number; // 500
+  fetch: typeof fetch; // globalThis.fetch
+}
+```

@@ -1,0 +1,181 @@
+---
+title: "Reference: Sessions"
+description: "client.sessions reference — create, retrieve, list, and updateStatus, with inline types and runnable examples."
+---
+
+Access these methods via `client.sessions`. They manage [hosted verification sessions](/integrate/sdks/typescript/server/session-verification). Request and response schemas are documented in full on the linked REST endpoints — this page covers the SDK signatures, types, and examples.
+
+## `create(input)`
+
+```typescript
+create(input: SessionCreateInput): Promise<SessionCreateResult>
+```
+
+Create a hosted verification session.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.firstName` | `string` | Yes | Applicant's first name |
+| `input.lastName` | `string` | Yes | Applicant's last name |
+| `input.email` | `string` | Yes | Applicant's email address |
+| `input.phone` | `string` | Yes | Applicant's phone number (E.164) |
+| `input.externalId` | `string` | No | Your internal reference ID |
+| `input.workflowId` | `string` | No | Workflow to run |
+| `input.redirectUrl` | `string` | No | URL to redirect the user to after verification |
+| `input.sendEmailInvite` | `boolean` | No | Send an email invitation |
+| `input.sendPhoneInvite` | `boolean` | No | Send an SMS invitation |
+
+**Returns** `SessionCreateResult`:
+
+```typescript
+interface SessionCreateResult {
+  id: string;
+  sessionUrl: string;
+  externalId?: string;
+  links: Array<{ url: string; type: string }>;
+}
+```
+
+**Throws** `ValidationError`, `AuthenticationError`, `RateLimitError`, `DeepIDVError`.
+
+```typescript
+const session = await client.sessions.create({
+  firstName: 'Jane',
+  lastName: 'Doe',
+  email: 'jane@example.com',
+  phone: '+15551234567',
+  redirectUrl: 'https://yourapp.com/done',
+});
+
+console.log(session.sessionUrl);
+```
+
+**See also:** REST [Create Session](/api-reference/sessions/create-session).
+
+## `retrieve(sessionId)`
+
+```typescript
+retrieve(sessionId: string): Promise<SessionRetrieveResult>
+```
+
+Retrieve full session details, including analysis results.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `sessionId` | `string` | Yes | Session ID from `create()` |
+
+**Returns** `SessionRetrieveResult`:
+
+```typescript
+interface SessionRetrieveResult {
+  sessionRecord: Session;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  senderUser?: { /* same shape as user */ };
+  resourceLinks?: Record<string, string>;
+}
+```
+
+`sessionRecord` is the full `Session` object — it carries `status`, `sessionProgress`, and an `analysisData` block with the document OCR, face-match, and liveness results. See [Navigating analysis data](/integrate/sdks/typescript/server/session-verification#navigating-analysis-data) for the walkthrough.
+
+**Throws** `ValidationError`, `AuthenticationError`, `NotFoundError`, `DeepIDVError`.
+
+```typescript
+const result = await client.sessions.retrieve('session-id-123');
+console.log(result.sessionRecord.status); // "SUBMITTED"
+```
+
+**See also:** REST [Retrieve Session](/api-reference/sessions/retrieve-session).
+
+## `list(params?)`
+
+```typescript
+list(params?: SessionListParams): Promise<PaginatedResponse<Session>>
+```
+
+List sessions with optional filtering and pagination.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `params.limit` | `number` | No | Max results per page |
+| `params.offset` | `number` | No | Starting offset |
+| `params.status` | `SessionStatus` | No | Filter: `PENDING`, `SUBMITTED`, `VERIFIED`, `REJECTED`, `VOIDED` |
+
+**Returns** `PaginatedResponse<Session>`:
+
+```typescript
+interface PaginatedResponse<T> {
+  data: T[];
+  total?: number;
+  hasMore?: boolean;
+  limit: number;
+  offset: number;
+}
+```
+
+```typescript
+const page = await client.sessions.list({ status: 'SUBMITTED', limit: 10 });
+for (const session of page.data) {
+  console.log(`${session.id}: ${session.status}`);
+}
+```
+
+**See also:** REST [List Sessions](/api-reference/sessions/list-sessions).
+
+## `updateStatus(sessionId, status)`
+
+```typescript
+updateStatus(
+  sessionId: string,
+  status: 'VERIFIED' | 'REJECTED' | 'VOIDED',
+): Promise<SessionRetrieveResult>
+```
+
+Set the final review status. Only `VERIFIED`, `REJECTED`, and `VOIDED` are valid targets — `PENDING` and `SUBMITTED` are managed by the API.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `sessionId` | `string` | Yes | Session ID |
+| `status` | `'VERIFIED' \| 'REJECTED' \| 'VOIDED'` | Yes | New status |
+
+**Returns** `SessionRetrieveResult` — the updated session details.
+
+**Throws** `ValidationError` (invalid status), `AuthenticationError`, `NotFoundError`, `DeepIDVError`.
+
+```typescript
+await client.sessions.updateStatus('session-id-123', 'VERIFIED');
+```
+
+**See also:** REST [Update Session Status](/api-reference/sessions/update-session-status).
+
+## Related types
+
+```typescript
+type SessionStatus = 'PENDING' | 'SUBMITTED' | 'VERIFIED' | 'REJECTED' | 'VOIDED';
+type SessionStatusUpdate = 'VERIFIED' | 'REJECTED' | 'VOIDED';
+
+interface SessionCreateInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  externalId?: string;
+  workflowId?: string;
+  redirectUrl?: string;
+  sendEmailInvite?: boolean;
+  sendPhoneInvite?: boolean;
+}
+
+interface SessionListParams {
+  limit?: number;
+  offset?: number;
+  status?: SessionStatus;
+}
+```

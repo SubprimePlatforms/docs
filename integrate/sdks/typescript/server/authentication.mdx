@@ -1,0 +1,138 @@
+---
+title: Authentication
+description: How the @deepidv/server SDK authenticates with an x-api-key header — env vars, key redaction, rotation, and custom fetch for proxies and mTLS.
+---
+
+The SDK authenticates every request to `api.deepidv.com` with an `x-api-key` header. This guide covers setup, security, and advanced configurations.
+
+<Info>
+  Need a key? Generate one from the [API Authentication](/authentication) page. Keys are owned by a user in your organization and carry that user's permissions.
+</Info>
+
+## Basic setup
+
+`apiKey` is the only required configuration field:
+
+```typescript
+import { DeepIDV } from '@deepidv/server';
+
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+});
+```
+
+Every HTTP request then automatically includes:
+
+```http
+x-api-key: your-api-key-here
+Accept: application/json
+```
+
+## Security best practices
+
+### Use environment variables
+
+Never hardcode API keys in source control:
+
+```typescript
+// Bad — key committed to source
+const client = new DeepIDV({ apiKey: 'sk_live_abc123...' });
+
+// Good — key from the environment
+const client = new DeepIDV({ apiKey: process.env.DEEPIDV_API_KEY! });
+```
+
+### Never log the full key
+
+The SDK automatically redacts API keys in error output. If you need to log which key was used, log the redacted form from `AuthenticationError`:
+
+```typescript
+import { AuthenticationError } from '@deepidv/server';
+
+try {
+  await client.document.scan({ image });
+} catch (err) {
+  if (err instanceof AuthenticationError) {
+    // Safe to log — only the last 4 characters are shown
+    console.error(`Auth failed with key: ${err.redactedKey}`);
+    // → "Auth failed with key: ****abcd"
+  }
+}
+```
+
+### Rotate keys
+
+If a key is compromised:
+
+1. Generate a new API key in the deepidv dashboard.
+2. Update your environment variable.
+3. Revoke the old key.
+
+No code changes are needed — the key is externalized.
+
+### Use a key per environment
+
+```bash
+# .env.development
+DEEPIDV_API_KEY=sk_test_dev_...
+
+# .env.production
+DEEPIDV_API_KEY=sk_live_prod_...
+```
+
+## API key redaction
+
+When an `AuthenticationError` is thrown, the SDK stores only a redacted version of the key. When serialized with `JSON.stringify()`, the full key is **never** included:
+
+```typescript
+JSON.stringify(authError);
+// {
+//   "type": "AuthenticationError",
+//   "message": "Invalid API key",
+//   "status": 401,
+//   "redactedKey": "****abcd"
+// }
+```
+
+This makes it safe to forward SDK errors to Sentry, Datadog, or any error-tracking service. See [Error Handling](/integrate/sdks/typescript/server/error-handling) for the full error model.
+
+## Custom fetch for proxy / mTLS
+
+To route requests through a proxy or attach mutual-TLS certificates, provide a custom `fetch` implementation:
+
+```typescript
+import { DeepIDV } from '@deepidv/server';
+import { ProxyAgent } from 'undici';
+
+const dispatcher = new ProxyAgent('https://proxy.internal:8080');
+
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+  fetch: (url, init) => fetch(url, { ...init, dispatcher }),
+});
+```
+
+### Cloudflare Workers service binding
+
+```typescript
+const client = new DeepIDV({
+  apiKey: env.DEEPIDV_API_KEY,
+  fetch: env.DEEPIDV_SERVICE.fetch.bind(env.DEEPIDV_SERVICE),
+});
+```
+
+See [Configuration](/integrate/sdks/typescript/server/configuration) for more `fetch` injection patterns.
+
+## Validation
+
+The SDK validates the API key synchronously at construction time, before any network call:
+
+```typescript
+// Throws ValidationError — apiKey cannot be empty
+new DeepIDV({ apiKey: '' });
+
+// Throws ValidationError — apiKey is required
+new DeepIDV({} as any);
+```
+
+This surfaces configuration mistakes immediately rather than on the first request.
