@@ -104,6 +104,7 @@ response = requests.get(
 | `applicantSubmissionLocation` | string | Human-readable submission location (typically `"City, Country"` when available) |
 | `applicantSubmissionLocationDetails` | object | Structured geo lookup of the submission IP (see below) |
 | `failureData` | object | Auto-failure attempt history (only present once at least one failed attempt has been recorded — see below) |
+| `declinedData` | object | Automated decline decision (only present when the session was auto-declined by AI identity verification — see below) |
 
 ### `applicantSubmissionLocationDetails` object
 
@@ -147,6 +148,53 @@ Each entry in `attempts` has the following shape:
     { "reason": "OCR_NAME_MISSING", "slot": "SECONDARY", "failedAt": "2026-05-26T15:32:14.000Z" },
     { "reason": "ID_TYPE_LOW_CONFIDENCE", "slot": "PRIMARY", "failedAt": "2026-05-26T15:34:02.000Z" }
   ]
+}
+```
+
+### `declinedData` object
+
+Present only when the session was automatically declined by deepidv's AI identity verification. It records the single decisive reason for the decline. Absent for sessions that passed, are awaiting manual review, or were auto-failed via attempt limits (see `failureData` — that is a separate, attempt-based mechanism). The full scoring breakdown that drove the decision remains available under `analysis_data`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `declined` | boolean | Always `true` when this object is present |
+| `score` | number \| null | Normalized verification score (0–10) behind the decision. `0` for a deterministic ID-type decline; `null` when a score does not apply |
+| `declinedAt` | string | ISO 8601 timestamp of the decline decision |
+| `reason` | object | The single decisive decline reason (see below) |
+
+The `reason` object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | string | Machine-readable reason code (see table below). New values may be added over time — consumers should treat this as an open string. |
+| `detail` | string | Short, human-readable description suitable for display |
+| `slot` | string \| null | Which ID slot the reason applies to: `PRIMARY`, `SECONDARY`, `TERTIARY`, or `null` when the reason is not slot-specific |
+| `severity` | string | `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` |
+
+Reason codes:
+
+| `code` | Severity | Meaning |
+|--------|----------|---------|
+| `ID_TYPE_UNRECOGNIZED` | `CRITICAL` | The document type could not be read from the ID |
+| `ID_TYPE_LOW_CONFIDENCE` | `CRITICAL` | The document type was read below the configured confidence threshold |
+| `DOC_TYPE_NOT_ALLOWED` | `CRITICAL` | The detected document type is not permitted for the workflow / does not match the selected type |
+| `LOW_FACE_MATCH` | `CRITICAL` | Face-match confidence between the selfie and the ID photo was too low |
+| `FACE_SELFIE_MISMATCH` | `CRITICAL` | The face on the ID did not match the selfie |
+| `LOW_LIVENESS` | `CRITICAL` | The liveness check did not pass |
+| `DOC_TYPE_MISMATCH` | `CRITICAL` | The submitted document type differed from the type the applicant selected |
+| `LOW_SCORE` | `HIGH` | The overall verification score fell below the auto-approval threshold |
+
+```json
+"declinedData": {
+  "declined": true,
+  "score": 2,
+  "declinedAt": "2025-01-15T10:43:00.000Z",
+  "reason": {
+    "code": "LOW_FACE_MATCH",
+    "detail": "Face match confidence is low",
+    "slot": "PRIMARY",
+    "severity": "CRITICAL"
+  }
 }
 ```
 
@@ -279,6 +327,17 @@ Both `user` (the applicant) and `sender_user` (the session creator) share the sa
         "attempts": [
           { "reason": "NO_FACE_DETECTED", "slot": "PRIMARY", "failedAt": "2025-01-15T10:37:00.000Z" }
         ]
+      },
+      "declinedData": {
+        "declined": true,
+        "score": 2,
+        "declinedAt": "2025-01-15T10:43:00.000Z",
+        "reason": {
+          "code": "LOW_FACE_MATCH",
+          "detail": "Face match confidence is low",
+          "slot": "PRIMARY",
+          "severity": "CRITICAL"
+        }
       }
     },
     "uploads": {
