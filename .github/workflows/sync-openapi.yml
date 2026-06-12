@@ -13,7 +13,8 @@ env:
   SOURCE_REPO: Deep-Identity-Inc/deepidv-open-api
   SOURCE_REF: main
   SOURCE_PATH: infrastructure/ec2/open-api/openapi.yaml
-  TARGET_PATH: api-reference/openapi.yaml
+  # Served as a static download
+  TARGET_PATH: assets/openapi.yaml
 
 jobs:
   sync:
