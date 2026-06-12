@@ -1,0 +1,240 @@
+---
+title: "Reference: Document, Face & Identity"
+description: "client.document, client.face, and client.identity reference — scan, detect, compare, estimateAge, and verify, with inline types and runnable examples."
+---
+
+The server-to-server primitives. Access them via `client.document`, `client.face`, and `client.identity`. Each image parameter accepts a `FileInput`; the SDK handles presigned upload internally. For the full request/response schemas, follow the REST links per method.
+
+```typescript
+// Accepted input for every image parameter on this page
+type FileInput = Uint8Array | ReadableStream<Uint8Array> | string;
+//  Uint8Array        — raw bytes (Node Buffer extends Uint8Array)
+//  ReadableStream    — streaming input (materialized before upload)
+//  string            — data URL, base64, or file path (file path not supported on edge runtimes)
+
+type DocumentType = 'passport' | 'drivers_license' | 'national_id' | 'auto';
+```
+
+---
+
+## Document
+
+### `scan(input)`
+
+```typescript
+scan(input: DocumentScanInput): Promise<DocumentScanResult>
+```
+
+Scan a document image and extract structured OCR data.
+
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| `input.image` | `FileInput` | Yes | — | Document image |
+| `input.documentType` | `DocumentType` | No | `'auto'` | Document type hint |
+
+**Returns** `DocumentScanResult`:
+
+```typescript
+interface DocumentScanResult {
+  documentType: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  nationality: string;
+  documentNumber: string;
+  expirationDate: string;
+  issuingCountry: string;
+  address?: string;
+  mrzData?: string;
+  faceImage?: string; // extracted face, base64
+  rawFields: Record<string, string>;
+  confidence: number; // 0–1
+}
+```
+
+**Throws** `ValidationError`, `AuthenticationError`, `RateLimitError`, `NetworkError`, `TimeoutError`, `DeepIDVError`.
+
+```typescript
+import { readFileSync } from 'node:fs';
+
+const result = await client.document.scan({
+  image: readFileSync('passport.jpg'),
+  documentType: 'passport',
+});
+console.log(`${result.fullName} — expires ${result.expirationDate}`);
+```
+
+**See also:** REST [Document Scan](/api-reference/server-to-server/document-scan).
+
+---
+
+## Face
+
+### `detect(input)`
+
+```typescript
+detect(input: FaceDetectInput): Promise<FaceDetectResult>
+```
+
+Detect a face in an image.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.image` | `FileInput` | Yes | Image to analyze |
+
+**Returns** `FaceDetectResult`:
+
+```typescript
+interface FaceDetectResult {
+  faceDetected: boolean;
+  confidence: number; // 0–1
+  boundingBox?: { top: number; left: number; width: number; height: number };
+  landmarks?: Array<{ type: string; x: number; y: number }>;
+}
+```
+
+```typescript
+const result = await client.face.detect({ image: readFileSync('photo.jpg') });
+if (result.faceDetected) {
+  console.log(`Confidence: ${result.confidence}`);
+}
+```
+
+**See also:** REST [Face Detect](/api-reference/server-to-server/face-detect).
+
+### `compare(input)`
+
+```typescript
+compare(input: FaceCompareInput): Promise<FaceCompareResult>
+```
+
+Compare two face images. Both upload in parallel via batch presign.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.source` | `FileInput` | Yes | Reference image |
+| `input.target` | `FileInput` | Yes | Image to compare against |
+
+**Returns** `FaceCompareResult`:
+
+```typescript
+interface FaceCompareResult {
+  isMatch: boolean; // confidence >= threshold
+  confidence: number; // 0–100
+  threshold: number; // 0–100
+  sourceFaceDetected: boolean;
+  targetFaceDetected: boolean;
+}
+```
+
+```typescript
+const result = await client.face.compare({
+  source: readFileSync('id-photo.jpg'),
+  target: readFileSync('selfie.jpg'),
+});
+console.log(result.isMatch ? 'Same person' : 'Different people');
+```
+
+**See also:** REST [Face Compare](/api-reference/server-to-server/face-compare).
+
+### `estimateAge(input)`
+
+```typescript
+estimateAge(input: FaceEstimateAgeInput): Promise<FaceEstimateAgeResult>
+```
+
+Estimate age and gender from a face image.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `input.image` | `FileInput` | Yes | Image to analyze |
+
+**Returns** `FaceEstimateAgeResult`:
+
+```typescript
+interface FaceEstimateAgeResult {
+  estimatedAge: number;
+  ageRange: { low: number; high: number };
+  gender: 'male' | 'female';
+  genderConfidence: number; // 0–1
+  faceDetected: boolean;
+}
+```
+
+```typescript
+const result = await client.face.estimateAge({ image: readFileSync('photo.jpg') });
+console.log(`Age: ${result.estimatedAge} (${result.ageRange.low}–${result.ageRange.high})`);
+```
+
+**See also:** REST [Face Estimate Age](/api-reference/server-to-server/face-estimate-age).
+
+---
+
+## Identity
+
+### `verify(input)`
+
+```typescript
+verify(input: IdentityVerifyInput): Promise<IdentityVerificationResult>
+```
+
+Full identity verification: document scan + face detection + face comparison in one orchestrated call. Both images upload in parallel.
+
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| `input.documentImage` | `FileInput` | Yes | — | Document image |
+| `input.faceImage` | `FileInput` | Yes | — | Selfie / face image |
+| `input.documentType` | `DocumentType` | No | auto-detect | Document type hint |
+
+**Returns** `IdentityVerificationResult`. All confidence and threshold values are reported on a **0–100** scale:
+
+```typescript
+interface IdentityVerificationResult {
+  verified: boolean;
+  overallConfidence: number; // 0–100
+  document: IdentityDocumentResult;
+  faceDetection: { faceDetected: boolean; confidence: number };
+  faceMatch: { isMatch: boolean; confidence: number; threshold: number };
+}
+
+interface IdentityDocumentResult {
+  documentType: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  nationality: string;
+  documentNumber: string;
+  expirationDate: string;
+  issuingCountry: string;
+  address?: string;
+  faceImage?: string;
+  confidence: number; // 0–100
+}
+```
+
+All three sub-results (`document`, `faceDetection`, `faceMatch`) are always present on a 2xx response, even when `verified` is `false`.
+
+**Throws** `ValidationError`, `AuthenticationError`, `RateLimitError`, `NetworkError`, `TimeoutError`, `DeepIDVError`.
+
+```typescript
+const result = await client.identity.verify({
+  documentImage: readFileSync('passport.jpg'),
+  faceImage: readFileSync('selfie.jpg'),
+  documentType: 'passport',
+});
+
+if (result.verified) {
+  console.log(`Verified: ${result.document.fullName}`);
+  console.log(`Confidence: ${result.overallConfidence}`);
+} else {
+  console.log('Verification failed');
+  console.log(`Face match: ${result.faceMatch.isMatch}`);
+  console.log(`Document confidence: ${result.document.confidence}`);
+}
+```
+
+**See also:** REST [Identity Verify](/api-reference/server-to-server/identity-verify).

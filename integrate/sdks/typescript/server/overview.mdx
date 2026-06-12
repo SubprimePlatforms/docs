@@ -1,0 +1,116 @@
+---
+title: Server SDK Overview
+description: "@deepidv/server is a typed, backend-first TypeScript SDK for the deepidv identity verification API — sessions, document and face primitives, identity verification, and silent screening."
+---
+
+`@deepidv/server` is the official backend-first TypeScript SDK for the [deepidv](https://api.deepidv.com) identity verification API. It wraps every REST endpoint in a typed, autocompleting client so you can create hosted verification sessions, scan documents, compare faces, run full identity verification, and screen individuals — without hand-writing HTTP, auth, retries, or file uploads.
+
+<Info>
+  This is the **server** SDK — it holds your API key and is meant to run in a trusted backend (Node.js, Deno, Bun, or an edge runtime). Never ship it to a browser or mobile client.
+</Info>
+
+## Why use the SDK
+
+- **Typed end to end.** Every input and result is a TypeScript type derived from a Zod schema — your editor autocompletes fields and the compiler catches mistakes before runtime.
+- **Thin client.** The SDK validates inputs, manages `x-api-key` auth, retries transient failures, and orchestrates presigned file uploads. All verification logic runs server-side at `api.deepidv.com`.
+- **Web-standards-first.** It uses only native web APIs (`fetch`, `AbortController`, `ReadableStream`, `Uint8Array`), which is what lets it run across Node, Deno, Bun, and Cloudflare Workers.
+- **Single dependency.** The only production dependency is [zod](https://zod.dev) for runtime input validation.
+
+## Install
+
+<CodeGroup>
+```bash npm
+npm install @deepidv/server
+```
+
+```bash pnpm
+pnpm add @deepidv/server
+```
+
+```bash yarn
+yarn add @deepidv/server
+```
+
+```bash bun
+bun add @deepidv/server
+```
+</CodeGroup>
+
+The package ships dual ESM + CJS builds with bundled TypeScript declarations, so `import` and `require` both work with no extra configuration.
+
+## The `DeepIDV` client
+
+The `DeepIDV` class is the single entry point. Construct it once with your API key and reuse it — the constructor is cheap and each instance is independent.
+
+```typescript
+import { DeepIDV } from '@deepidv/server';
+
+const client = new DeepIDV({
+  apiKey: process.env.DEEPIDV_API_KEY!,
+});
+```
+
+See [Authentication](/integrate/sdks/typescript/server/authentication) for API key setup and [Configuration](/integrate/sdks/typescript/server/configuration) for all client options.
+
+## Namespace map
+
+Methods are grouped by domain. Each namespace maps onto a part of the REST API:
+
+| Namespace | Methods | What it does | REST reference |
+| --------- | ------- | ------------ | -------------- |
+| `client.sessions` | `create`, `retrieve`, `list`, `updateStatus` | Hosted verification sessions | [Sessions](/api-reference/sessions/create-session) |
+| `client.document` | `scan` | Document OCR / data extraction | [Document Scan](/api-reference/server-to-server/document-scan) |
+| `client.face` | `detect`, `compare`, `estimateAge` | Face detection, matching, age estimate | [Face](/api-reference/server-to-server/face-detect) |
+| `client.identity` | `verify` | Orchestrated document + face verification | [Identity Verify](/api-reference/server-to-server/identity-verify) |
+| `client.screening` | `pepSanctions`, `adverseMedia`, `titleCheck` | Silent screening (PEP/sanctions, adverse media, title check) | [Silent Screening](/api-reference/silent-screening/pep-sanctions) |
+| `client.asyncJobs` | `get` | Poll long-running async jobs | [Get Async Job](/api-reference/async-jobs/get-async-job) |
+
+The client also exposes `client.on(event, listener)` for lifecycle events — see [Async Jobs & Events](/integrate/sdks/typescript/server/reference/async-jobs-events).
+
+## Three service tiers
+
+| Tier | Pattern | Methods |
+| ---- | ------- | ------- |
+| **Synchronous** | One call, one result. Image in, structured data out. | `document.scan`, `face.detect`, `face.compare`, `face.estimateAge`, `screening.pepSanctions`, `screening.titleCheck` |
+| **Orchestrated** | One call, multiple operations coordinated server-side. | `identity.verify` |
+| **Session-based** | Create a session, the user completes steps, you retrieve results. | `sessions.create`, `sessions.retrieve` |
+| **Async** | Kick off a job, poll for the result. | `screening.adverseMedia`, `asyncJobs.get` |
+
+## Supported runtimes
+
+The SDK runs anywhere with native `fetch`:
+
+| Feature | Node.js 18+ | Deno | Bun | Cloudflare Workers |
+| ------- | ----------- | ---- | --- | ------------------ |
+| All API methods | Yes | Yes | Yes | Yes |
+| File path input | Yes | Yes | Yes | **No** |
+| `Uint8Array` / `Buffer` input | Yes | Yes | Yes | Yes |
+| `ReadableStream` input | Yes | Yes | Yes | Yes |
+| Base64 / data URL input | Yes | Yes | Yes | Yes |
+| ESM import | Yes | Yes | Yes | Yes |
+| CJS require | Yes | N/A | Yes | N/A |
+
+Node.js 18 is the minimum because it's the first LTS with stable native `fetch`. On edge runtimes there is no filesystem, so pass a `Uint8Array` or `ReadableStream` instead of a file path — see [Configuration](/integrate/sdks/typescript/server/configuration) for proxy, mTLS, and service-binding `fetch` setups.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/integrate/sdks/typescript/server/quickstart">
+    Install, initialize, and make your first call in two minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/integrate/sdks/typescript/server/authentication">
+    API key setup, env vars, redaction, and custom fetch.
+  </Card>
+  <Card title="Session Verification" icon="id-card" href="/integrate/sdks/typescript/server/session-verification">
+    The hosted flow: create a session, let the user verify, read results.
+  </Card>
+  <Card title="Server-to-Server" icon="server" href="/integrate/sdks/typescript/server/server-to-server">
+    Build a custom pipeline from the document and face primitives.
+  </Card>
+</CardGroup>
+
+## Resources
+
+- **npm:** [`@deepidv/server`](https://www.npmjs.com/package/@deepidv/server)
+- **REST API reference:** [docs.deepidv.com/api-reference](/api-reference/sessions/create-session)
+- **Admin console:** [app.deepidv.com](https://app.deepidv.com)

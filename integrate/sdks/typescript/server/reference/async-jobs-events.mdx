@@ -1,0 +1,156 @@
+---
+title: "Reference: Async Jobs & Events"
+description: "client.asyncJobs.get for polling long-running jobs, and client.on(...) lifecycle events for observability and APM integration."
+---
+
+This page covers two cross-cutting surfaces: `client.asyncJobs` for polling long-running jobs, and `client.on(...)` for subscribing to SDK lifecycle events.
+
+## Async Jobs
+
+Endpoints that kick off long-running work — currently [adverse media screening](/integrate/sdks/typescript/server/reference/screening#adversemediainput) — return a `jobId` immediately. Most callers use the typed handle from the originating method (`screening.adverseMedia(...)`), but `client.asyncJobs.get(jobId)` lets you resume polling a `jobId` you persisted earlier (for example, across process restarts).
+
+### `get(jobId)`
+
+```typescript
+get(jobId: string): Promise<AsyncJobSnapshot>
+```
+
+Fetch the current state of an async job by ID.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `jobId` | `string` | Yes | Server-side job ID returned by the originating call |
+
+**Returns** `AsyncJobSnapshot` — a discriminated union on `status`. `result` is typed as `unknown` because the async-jobs surface is service-agnostic; re-parse it against the originating service's schema to narrow it.
+
+```typescript
+type AsyncJobSnapshot =
+  | { jobId: string; createdAt: number; updatedAt: string; status: 'pending' }
+  | { jobId: string; createdAt: number; updatedAt: string; status: 'processing' }
+  | { jobId: string; createdAt: number; updatedAt: string; status: 'ready'; result: unknown }
+  | { jobId: string; createdAt: number; updatedAt: string; status: 'failed'; error: string };
+```
+
+<Note>
+  `createdAt` is epoch **seconds** (a number); `updatedAt` is an ISO 8601 string. `ready` and `failed` are the terminal states.
+</Note>
+
+**Throws** `ValidationError` (empty `jobId`), `AuthenticationError` (401), `AuthorizationError` (403), `NotFoundError` (404 — unknown ID or pruned by TTL), `DeepIDVError`.
+
+```typescript
+const snapshot = await client.asyncJobs.get('job_abc123');
+
+if (snapshot.status === 'ready') {
+  console.log(snapshot.result); // unknown — re-parse with the service's schema
+} else if (snapshot.status === 'failed') {
+  console.error(snapshot.error);
+} else {
+  console.log(`Still ${snapshot.status}…`);
+}
+```
+
+**See also:** REST [Get Async Job](/api-reference/async-jobs/get-async-job).
+
+---
+
+## Events
+
+The SDK emits lifecycle events for observability, logging, and APM integration. Subscribe with `client.on(event, listener)`.
+
+### `on(event, listener)`
+
+```typescript
+on<K extends keyof SDKEventMap>(
+  event: K,
+  listener: (payload: SDKEventMap[K]) => void,
+): () => void
+```
+
+Subscribe to an event. **Returns** an unsubscribe function — call it to remove the listener.
+
+```typescript
+const unsubscribe = client.on('request', ({ method, url }) => {
+  console.log(`→ ${method} ${url}`);
+});
+
+// Later
+unsubscribe();
+```
+
+For one-shot behavior, unsubscribe from inside the listener:
+
+```typescript
+const unsub = client.on('response', (payload) => {
+  console.log('First response:', payload.status);
+  unsub();
+});
+```
+
+### Event map
+
+```typescript
+type SDKEventMap = {
+  request: { method: string; url: string };
+  response: { status: number; url: string; durationMs: number };
+  retry: { attempt: number; delayMs: number; error: unknown };
+  error: { error: unknown };
+  warning: { message: string; error: unknown };
+  'upload:start': { url: string; bytes: number; contentType: string };
+  'upload:complete': { url: string; contentType: string };
+};
+```
+
+| Event | Fired | Payload |
+| ----- | ----- | ------- |
+| `request` | Before each HTTP request | `{ method, url }` |
+| `response` | After each successful response | `{ status, url, durationMs }` |
+| `retry` | Before each retry sleep | `{ attempt, delayMs, error }` |
+| `error` | When all retries are exhausted, before throwing | `{ error }` |
+| `warning` | When a listener itself throws | `{ message, error }` |
+| `upload:start` | Before each S3 PUT upload | `{ url, bytes, contentType }` |
+| `upload:complete` | After each S3 PUT upload | `{ url, contentType }` |
+
+### Execution model
+
+Events dispatch **synchronously** within the request flow, in registration order. The SDK does not await listener return values. Therefore:
+
+- Listeners **should not** perform heavy blocking work — use async logging instead.
+- Listeners **cannot** modify the request or response — payloads are read-only.
+
+### Listener error safety
+
+If a listener throws, the SDK catches the exception, emits a `warning` event with the details, and continues processing normally — a broken listener never crashes a request. If a `warning` listener itself throws, that exception is silently swallowed to prevent infinite recursion.
+
+```typescript
+// This broken listener won't crash your application:
+client.on('request', () => {
+  throw new Error('oops');
+});
+// The SDK catches it and emits:
+// warning: { message: "Listener error in 'request'", error: Error('oops') }
+```
+
+### APM integration example
+
+```typescript
+import { DeepIDV } from '@deepidv/server';
+
+const client = new DeepIDV({ apiKey: process.env.DEEPIDV_API_KEY! });
+
+client.on('request', ({ method, url }) => {
+  tracer.trace('deepidv.request', { resource: `${method} ${url}` });
+});
+
+client.on('response', ({ status, durationMs }) => {
+  metrics.histogram('deepidv.latency', durationMs);
+  metrics.increment('deepidv.requests', { status: String(status) });
+});
+
+client.on('retry', ({ attempt }) => {
+  metrics.increment('deepidv.retries', { attempt: String(attempt) });
+});
+
+client.on('error', ({ error }) => {
+  errorTracker.captureException(error);
+});
+```
