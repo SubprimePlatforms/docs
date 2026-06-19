@@ -61,6 +61,10 @@
         "tab": "API Reference",
         "groups": [
           {
+            "group": "Specifications",
+            "pages": ["api-reference/openapi-spec"]
+          },
+          {
             "group": "Sessions",
             "pages": [
               "api-reference/sessions/create-session",
@@ -99,9 +103,7 @@
           },
           {
             "group": "Async Jobs",
-            "pages": [
-              "api-reference/async-jobs/get-async-job"
-            ]
+            "pages": ["api-reference/async-jobs/get-async-job"]
           },
           {
             "group": "Server-to-Server",
@@ -163,10 +165,7 @@
         "groups": [
           {
             "group": "Introduction",
-            "pages": [
-              "chain-layer/overview",
-              "chain-layer/how-it-works"
-            ]
+            "pages": ["chain-layer/overview", "chain-layer/how-it-works"]
           },
           {
             "group": "Explorer",
@@ -187,22 +186,11 @@
           },
           {
             "group": "Operations",
-            "pages": [
-              "chain-layer/governance"
-            ]
+            "pages": ["chain-layer/governance"]
           },
           {
             "group": "Resources",
-            "pages": [
-              "chain-layer/faq",
-              "chain-layer/reference"
-            ]
-          },
-          {
-            "group": "OpenAPI Specification",
-            "pages": [
-              "api-reference/openapi-spec"
-            ]
+            "pages": ["chain-layer/faq", "chain-layer/reference"]
           }
         ]
       }

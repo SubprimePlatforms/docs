@@ -17,6 +17,478 @@ components:
       description: Per-organization API key. Issued via the deepidv dashboard. Send on
         every request.
   schemas:
+    AdverseMediaResponse:
+      type: object
+      properties:
+        totalHits:
+          type: integer
+        riskLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        summary:
+          type: string
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              findingId:
+                type: string
+              severity:
+                type: string
+                enum:
+                  - MEDIUM
+                  - HIGH
+                  - CRITICAL
+              category:
+                type: string
+              title:
+                type: string
+              detail:
+                type: string
+              sourceUrl:
+                type:
+                  - string
+                  - "null"
+              sourceName:
+                type:
+                  - string
+                  - "null"
+              articleDate:
+                type:
+                  - string
+                  - "null"
+              confidence:
+                type: number
+                minimum: 0
+                maximum: 1
+              confirmedBy:
+                type: array
+                items:
+                  type: string
+            required:
+              - findingId
+              - severity
+              - category
+              - title
+              - detail
+              - sourceUrl
+              - sourceName
+              - articleDate
+              - confidence
+              - confirmedBy
+        exposuresByCategory:
+          type: object
+          properties:
+            financial_crime: &a1
+              type: object
+              properties:
+                hits:
+                  type: integer
+                articles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      timestamp:
+                        type:
+                          - string
+                          - "null"
+                      headline:
+                        type: string
+                      sourceLink:
+                        type:
+                          - string
+                          - "null"
+                      source:
+                        type: string
+                        enum:
+                          - news
+                          - court-records
+                          - watchlist-database
+                    required:
+                      - timestamp
+                      - headline
+                      - sourceLink
+                      - source
+              required:
+                - hits
+                - articles
+            terrorism: *a1
+            regulatory: *a1
+            political: *a1
+            organized_crime: *a1
+            violent_crime: *a1
+            criminal_legal: *a1
+            reputational: *a1
+            court_records: *a1
+      required:
+        - totalHits
+        - riskLevel
+        - riskScore
+        - summary
+        - findings
+        - exposuresByCategory
+      description: Result of an adverse media screening including risk score,
+        findings, and exposure breakdown by category.
+    TitleCheckResponse:
+      oneOf:
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - found
+            subjectProperty:
+              type:
+                - object
+                - "null"
+              properties:
+                APNFormatted:
+                  type:
+                    - string
+                    - "null"
+                APNUnformatted:
+                  type:
+                    - string
+                    - "null"
+                PropertyFullStreetAddress:
+                  type:
+                    - string
+                    - "null"
+                PropertyCity:
+                  type:
+                    - string
+                    - "null"
+                PropertyState:
+                  type:
+                    - string
+                    - "null"
+                PropertyZipCode:
+                  type:
+                    - string
+                    - "null"
+                PropertyCounty:
+                  type:
+                    - string
+                    - "null"
+                LegalDescription:
+                  type:
+                    - string
+                    - "null"
+                PropertyType:
+                  type:
+                    - string
+                    - "null"
+                LandUseCode:
+                  type:
+                    - string
+                    - "null"
+                LandUseDescription:
+                  type:
+                    - string
+                    - "null"
+                Zoning:
+                  type:
+                    - string
+                    - "null"
+                LotSizeAcres:
+                  type:
+                    - number
+                    - "null"
+                LotSizeSqFt:
+                  type:
+                    - number
+                    - "null"
+                YearBuilt:
+                  type:
+                    - integer
+                    - "null"
+                Bedrooms:
+                  type:
+                    - integer
+                    - "null"
+                Bathrooms:
+                  type:
+                    - number
+                    - "null"
+                BuildingAreaSqFt:
+                  type:
+                    - number
+                    - "null"
+                Stories:
+                  type:
+                    - number
+                    - "null"
+              required:
+                - APNFormatted
+                - APNUnformatted
+                - PropertyFullStreetAddress
+                - PropertyCity
+                - PropertyState
+                - PropertyZipCode
+                - PropertyCounty
+                - LegalDescription
+                - PropertyType
+                - LandUseCode
+                - LandUseDescription
+                - Zoning
+                - LotSizeAcres
+                - LotSizeSqFt
+                - YearBuilt
+                - Bedrooms
+                - Bathrooms
+                - BuildingAreaSqFt
+                - Stories
+            ownerInformation:
+              type:
+                - object
+                - "null"
+              properties:
+                Owner1LastName:
+                  type:
+                    - string
+                    - "null"
+                Owner1FirstNameMiddleInitial:
+                  type:
+                    - string
+                    - "null"
+                Owner2LastName:
+                  type:
+                    - string
+                    - "null"
+                Owner2FirstNameMiddleInitial:
+                  type:
+                    - string
+                    - "null"
+                MailingFullStreetAddress:
+                  type:
+                    - string
+                    - "null"
+                MailingCity:
+                  type:
+                    - string
+                    - "null"
+                MailingState:
+                  type:
+                    - string
+                    - "null"
+                MailingZipCode:
+                  type:
+                    - string
+                    - "null"
+                VestingOwnershipRights:
+                  type:
+                    - string
+                    - "null"
+                OwnerOccupied:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - Owner1LastName
+                - Owner1FirstNameMiddleInitial
+                - Owner2LastName
+                - Owner2FirstNameMiddleInitial
+                - MailingFullStreetAddress
+                - MailingCity
+                - MailingState
+                - MailingZipCode
+                - VestingOwnershipRights
+                - OwnerOccupied
+            locationInformation:
+              type:
+                - object
+                - "null"
+              properties:
+                County:
+                  type:
+                    - string
+                    - "null"
+                CensusTract:
+                  type:
+                    - string
+                    - "null"
+                CensusBlock:
+                  type:
+                    - string
+                    - "null"
+                Municipality:
+                  type:
+                    - string
+                    - "null"
+                SchoolDistrict:
+                  type:
+                    - string
+                    - "null"
+                FloodZone:
+                  type:
+                    - string
+                    - "null"
+                FloodPanelNumber:
+                  type:
+                    - string
+                    - "null"
+                Neighborhood:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - County
+                - CensusTract
+                - CensusBlock
+                - Municipality
+                - SchoolDistrict
+                - FloodZone
+                - FloodPanelNumber
+                - Neighborhood
+            ownerTransferInformation:
+              type:
+                - object
+                - "null"
+              properties:
+                TransferDocumentNumber:
+                  type:
+                    - string
+                    - "null"
+                TransferRecordingDate:
+                  type:
+                    - string
+                    - "null"
+                TransferSaleDate:
+                  type:
+                    - string
+                    - "null"
+                TransferDeedType:
+                  type:
+                    - string
+                    - "null"
+                TransferSalePrice:
+                  type:
+                    - number
+                    - "null"
+              required:
+                - TransferDocumentNumber
+                - TransferRecordingDate
+                - TransferSaleDate
+                - TransferDeedType
+                - TransferSalePrice
+            lastMarketSaleInformation:
+              type:
+                - object
+                - "null"
+              properties:
+                SaleDate:
+                  type:
+                    - string
+                    - "null"
+                SalePrice:
+                  type:
+                    - number
+                    - "null"
+                SaleDocumentNumber:
+                  type:
+                    - string
+                    - "null"
+                SaleDeedType:
+                  type:
+                    - string
+                    - "null"
+                RecordingDate:
+                  type:
+                    - string
+                    - "null"
+                Buyer:
+                  type:
+                    - string
+                    - "null"
+                Seller:
+                  type:
+                    - string
+                    - "null"
+                PricePerSqFt:
+                  type:
+                    - number
+                    - "null"
+              required:
+                - SaleDate
+                - SalePrice
+                - SaleDocumentNumber
+                - SaleDeedType
+                - RecordingDate
+                - Buyer
+                - Seller
+                - PricePerSqFt
+          required:
+            - status
+            - subjectProperty
+            - ownerInformation
+            - locationInformation
+            - ownerTransferInformation
+            - lastMarketSaleInformation
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - multiple_properties
+            message:
+              type: string
+            availableUnits:
+              type: array
+              items:
+                type: string
+            properties:
+              type: array
+              items:
+                type: object
+                properties:
+                  owner:
+                    type: string
+                  apartmentOrUnit:
+                    type: string
+                required:
+                  - owner
+                  - apartmentOrUnit
+          required:
+            - status
+            - message
+            - availableUnits
+            - properties
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - unsupported_region
+            message:
+              type: string
+              enum:
+                - Title search is currently available for US addresses only.
+          required:
+            - status
+            - message
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - not_found
+            message:
+              type: string
+          required:
+            - status
+            - message
+      description: "Result of a title/property search. Discriminated on `status`:
+        found, multiple_properties, unsupported_region, or not_found."
     ScanDocumentResponse:
       type: object
       properties:
@@ -1152,6 +1624,292 @@ components:
       enum:
         - claude
         - custom
+    PepSanctionsResponse:
+      type: object
+      properties:
+        totalMatches:
+          type: integer
+        peps:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              country:
+                type:
+                  - string
+                  - "null"
+              dateOfBirth:
+                type:
+                  - string
+                  - "null"
+              confidence:
+                type: number
+                minimum: 0
+                maximum: 1
+              datasets:
+                type: array
+                items:
+                  type: string
+            required:
+              - name
+              - country
+              - dateOfBirth
+              - confidence
+              - datasets
+        sanctions:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              country:
+                type:
+                  - string
+                  - "null"
+              dateOfBirth:
+                type:
+                  - string
+                  - "null"
+              confidence:
+                type: number
+                minimum: 0
+                maximum: 1
+              datasets:
+                type: array
+                items:
+                  type: string
+            required:
+              - name
+              - country
+              - dateOfBirth
+              - confidence
+              - datasets
+        both:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              country:
+                type:
+                  - string
+                  - "null"
+              dateOfBirth:
+                type:
+                  - string
+                  - "null"
+              confidence:
+                type: number
+                minimum: 0
+                maximum: 1
+              datasets:
+                type: array
+                items:
+                  type: string
+            required:
+              - name
+              - country
+              - dateOfBirth
+              - confidence
+              - datasets
+        searchedSources:
+          type: array
+          items:
+            type: string
+      required:
+        - totalMatches
+        - peps
+        - sanctions
+        - both
+        - searchedSources
+      description: Normalized result of a PEP & sanctions screening. Matches are
+        deduped by (name, dataset) with confidence 0–1 (higher = better).
+    PepSanctionsRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        dateOfBirth:
+          type: string
+          format: date
+      required:
+        - email
+        - firstName
+        - lastName
+        - dateOfBirth
+    AsyncJobAccepted:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - processing
+            - ready
+            - failed
+        message:
+          type: string
+      required:
+        - jobId
+        - status
+        - message
+      description: Acknowledgement that an async job was queued (202) or that an
+        existing job was returned for a reused Idempotency-Key (200). Poll GET
+        /v1/async-jobs/{jobId} for the result.
+    AdverseMediaRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        dateOfBirth:
+          type: string
+          format: date
+        country:
+          type: string
+          pattern: ^[A-Z]{2}$/i
+      required:
+        - email
+        - firstName
+        - lastName
+        - dateOfBirth
+    TitleCheckRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: applicant@example.com
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+        - email
+        - firstName
+        - lastName
+        - address
+    AsyncJobResponse:
+      oneOf:
+        - $ref: "#/components/schemas/AsyncJobPending"
+        - $ref: "#/components/schemas/AsyncJobProcessing"
+        - $ref: "#/components/schemas/AsyncJobReady"
+        - $ref: "#/components/schemas/AsyncJobFailed"
+      discriminator:
+        propertyName: status
+        mapping:
+          pending: "#/components/schemas/AsyncJobPending"
+          processing: "#/components/schemas/AsyncJobProcessing"
+          ready: "#/components/schemas/AsyncJobReady"
+          failed: "#/components/schemas/AsyncJobFailed"
+      description: "Async job status. Discriminated on `status`: pending, processing,
+        ready (includes result), or failed (includes error)."
+    AsyncJobPending:
+      type: object
+      properties:
+        jobId:
+          type: string
+        createdAt:
+          type: number
+        updatedAt:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+      required:
+        - jobId
+        - createdAt
+        - updatedAt
+        - status
+    AsyncJobProcessing:
+      type: object
+      properties:
+        jobId:
+          type: string
+        createdAt:
+          type: number
+        updatedAt:
+          type: string
+        status:
+          type: string
+          enum:
+            - processing
+      required:
+        - jobId
+        - createdAt
+        - updatedAt
+        - status
+    AsyncJobReady:
+      type: object
+      properties:
+        jobId:
+          type: string
+        createdAt:
+          type: number
+        updatedAt:
+          type: string
+        status:
+          type: string
+          enum:
+            - ready
+        result: {}
+      required:
+        - jobId
+        - createdAt
+        - updatedAt
+        - status
+    AsyncJobFailed:
+      type: object
+      properties:
+        jobId:
+          type: string
+        createdAt:
+          type: number
+        updatedAt:
+          type: string
+        status:
+          type: string
+          enum:
+            - failed
+        error:
+          type: string
+      required:
+        - jobId
+        - createdAt
+        - updatedAt
+        - status
+        - error
     PresignUrlResponse:
       type: object
       properties:
@@ -1178,18 +1936,36 @@ components:
     PresignUrlRequest:
       type: object
       properties:
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PresignUrlFile"
+          minItems: 1
+          description: One entry per file the caller intends to upload. The array length
+            determines how many presigned URLs are returned, in matching order.
+      required:
+        - files
+    PresignUrlFile:
+      type: object
+      properties:
         contentType:
           type: string
+          minLength: 1
           example: image/jpeg
-          description: MIME type of the file the caller intends to upload. The presigned
-            URL is bound to this content type.
-        count:
-          type: number
-          minimum: 1
-          example: 1
-          description: Number of presigned URLs to generate.
+          description: MIME type of the file. The presigned URL is bound to this content
+            type — the PUT must send the same `Content-Type` header or S3
+            returns 403.
+        byteLength:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 15728640
+          example: 263582
+          description: Size of the file in bytes. Signed into the URL via `Content-Length`
+            so the PUT must send exactly this many bytes. Maximum 15728640 bytes
+            (15 MiB).
       required:
-        - count
+        - contentType
+        - byteLength
   parameters: {}
 paths:
   /v1/document/scan:
@@ -1201,7 +1977,7 @@ paths:
         number, etc.) from a single document image via AWS Textract AnalyzeID.
         Accepts the image as a multipart upload, a base64/base64url-encoded JSON
         string, or an S3 object key from a previously presigned upload.
-      security: &a1
+      security: &a2
         - ApiKeyAuth: []
       requestBody:
         required: true
@@ -1259,7 +2035,7 @@ paths:
       description: "Returns the highest-confidence detected face with its bounding box
         and facial landmarks. When no face is detected, returns `faceDetected:
         false` with `confidence: 0`."
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1315,7 +2091,7 @@ paths:
       summary: Compare a source face image to a target face image
       description: Returns the similarity between two face images. `isMatch` is true
         when similarity meets the server-side threshold.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1371,7 +2147,7 @@ paths:
       summary: Estimate age and gender from a face image
       description: Returns an estimated age, age range, and gender for the
         highest-confidence detected face in the image.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1429,7 +2205,7 @@ paths:
         comparison between the document portrait and the selfie in a single
         server call. Returns the combined result plus a weighted overall
         confidence score.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1486,7 +2262,7 @@ paths:
       description: Creates an IDV session for an applicant and (by default) sends an
         email and SMS invite with the verification link. Pass a `workflowId` to
         run a custom workflow; omit it for legacy IDV.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1546,7 +2322,7 @@ paths:
       description: Returns sessions for the caller. Defaults to sessions sent by the
         authenticated user; pass `by_organization=true` to widen the scope or
         `external_id` / `workflow_id` to filter.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: number
@@ -1643,7 +2419,7 @@ paths:
       summary: Fetch a session by id
       description: Returns the session record along with presigned GET URLs for any
         applicant-uploaded assets.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -1696,7 +2472,7 @@ paths:
       summary: Manually set a session's status
       description: Overrides a session's status to VERIFIED or REJECTED. Intended for
         manual review flows.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -1756,7 +2532,7 @@ paths:
       description: Deprecated alias for `POST /v1/sessions`. New integrations should
         use `/v1/sessions`.
       deprecated: true
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1809,7 +2585,7 @@ paths:
       summary: List workflows
       description: Returns all workflows belonging to the calling organization,
         ordered by creation time descending.
-      security: *a1
+      security: *a2
       responses:
         "200":
           description: Workflows for the organization.
@@ -1856,7 +2632,7 @@ paths:
       description: Creates a workflow composed of up to 10 ordered, unique steps. Step
         ids must be one of ID_VERIFICATION, FACE_LIVENESS, AGE_ESTIMATION,
         PEP_SANCTIONS, ADVERSE_MEDIA.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -1907,7 +2683,7 @@ paths:
       tags:
         - Workflows
       summary: Fetch a workflow by id
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -1960,7 +2736,7 @@ paths:
       summary: Create and send a bank statement request
       description: Creates a bank statement request for an applicant. By default sends
         an email and SMS invite linking to the applicant-facing flow.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -2017,7 +2793,7 @@ paths:
       tags:
         - Financial
       summary: List bank statements
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2072,7 +2848,7 @@ paths:
       summary: Fetch a bank statement by id
       description: Returns the bank statement record. When the request is completed
         the response includes the parsed statement payload.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2123,7 +2899,7 @@ paths:
       tags:
         - Financial
       summary: List bank statements by external id
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2181,7 +2957,7 @@ paths:
       tags:
         - Credit Terms
       summary: Create and send a credit terms application request
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -2238,7 +3014,7 @@ paths:
       tags:
         - Credit Terms
       summary: List credit terms applications
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2289,7 +3065,7 @@ paths:
       tags:
         - Credit Terms
       summary: Fetch a credit terms record by id
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2340,7 +3116,7 @@ paths:
       tags:
         - Credit Terms
       summary: List credit terms records by external id
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2403,7 +3179,7 @@ paths:
       summary: Create and send a hard credit check session
       description: Creates a session of type credit-check-hard. Equifax hard inquiry
         runs once the applicant completes the flow.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -2462,7 +3238,7 @@ paths:
       summary: Create and send a soft credit check session
       description: Creates a session of type credit-check-soft. Equifax soft inquiry
         runs once the applicant completes the flow.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -2521,7 +3297,7 @@ paths:
       summary: List credit checks (preview)
       description: Returns 501 — Credit Checks read API is not yet generally
         available. Use a sandbox API key to preview test responses.
-      security: *a1
+      security: *a2
       responses:
         "400":
           description: The request body failed schema validation or contained an
@@ -2569,7 +3345,7 @@ paths:
       summary: Fetch a credit check by id (preview)
       description: Returns 501 — Credit Checks read API is not yet generally
         available. Use a sandbox API key to preview test responses.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2623,7 +3399,7 @@ paths:
       summary: List OAuth clients
       description: Returns the single derived OAuth client bound to the caller's API
         key. There is no separate per-client registration.
-      security: *a1
+      security: *a2
       responses:
         "200":
           description: OAuth client list (always exactly one entry).
@@ -2669,7 +3445,7 @@ paths:
       summary: Create an OAuth client (unsupported)
       description: Always returns 410. OAuth clients are derived from the caller's API
         key and cannot be created separately.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
@@ -2722,7 +3498,7 @@ paths:
       summary: Rotate an OAuth client secret (unsupported)
       description: Always returns 410. Rotate the bound API key in the deepidv
         dashboard instead.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2775,7 +3551,7 @@ paths:
       summary: Revoke an OAuth client (unsupported)
       description: Always returns 410. Revoke the bound API key in the deepidv
         dashboard instead.
-      security: *a1
+      security: *a2
       parameters:
         - schema:
             type: string
@@ -2821,6 +3597,268 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/screening/pep-sanctions:
+    post:
+      tags:
+        - Screening
+      summary: Run a PEP & sanctions screening
+      description: Screens an individual against politically-exposed-person and
+        sanctions lists (local lists + OpenSanctions). Returns normalized
+        matches grouped into peps, sanctions, and both, deduped by (name,
+        dataset) with a confidence score (0–1, higher = better).
+      security: *a2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PepSanctionsRequest"
+      responses:
+        "200":
+          description: PEP & sanctions screening result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PepSanctionsResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/screening/adverse-media:
+    post:
+      tags:
+        - Screening
+      summary: Queue an adverse media screening
+      description: Starts an asynchronous adverse-media check across news, court
+        records, and watchlist databases. Returns 202 with a jobId; poll GET
+        /v1/async-jobs/{jobId} for the result. Supply an optional
+        Idempotency-Key header to safely retry without duplicating work.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            description: Optional client-supplied key. Reusing a key returns the existing
+              job (200) instead of creating a new one, preventing duplicate work
+              on retries.
+          required: false
+          description: Optional client-supplied key. Reusing a key returns the existing
+            job (200) instead of creating a new one, preventing duplicate work
+            on retries.
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdverseMediaRequest"
+      responses:
+        "200":
+          description: Existing job returned for a reused Idempotency-Key (no new work
+            queued).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobAccepted"
+        "202":
+          description: Adverse media check queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobAccepted"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/screening/title-check:
+    post:
+      tags:
+        - Screening
+      summary: Queue a property title check
+      description: "Starts an asynchronous property/title search for a US address via
+        DataTree. Returns 202 with a jobId; poll GET /v1/async-jobs/{jobId} for
+        the result (the ready `result` is discriminated on `status`: found,
+        multiple_properties, unsupported_region, or not_found). Supply an
+        optional Idempotency-Key header to safely retry without duplicating
+        work."
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            description: Optional client-supplied key. Reusing a key returns the existing
+              job (200) instead of creating a new one, preventing duplicate work
+              on retries.
+          required: false
+          description: Optional client-supplied key. Reusing a key returns the existing
+            job (200) instead of creating a new one, preventing duplicate work
+            on retries.
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TitleCheckRequest"
+      responses:
+        "200":
+          description: Existing job returned for a reused Idempotency-Key (no new work
+            queued).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobAccepted"
+        "202":
+          description: Title check queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobAccepted"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/async-jobs/{jobId}:
+    get:
+      tags:
+        - Async Jobs
+      summary: Get an async job by id
+      description: "Returns the current state of an async job. The response is a
+        discriminated union on `status`: pending and processing carry no
+        payload; ready includes `result`; failed includes `error`."
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: The job ID returned by the creation endpoint.
+          required: true
+          description: The job ID returned by the creation endpoint.
+          name: jobId
+          in: path
+      responses:
+        "200":
+          description: Async job state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobResponse"
+        "400":
+          description: The request body failed schema validation or contained an
+            unsupported image format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key is missing, or the referenced resource does not belong to
+            this organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/upload/presign:
     post:
       tags:
@@ -2830,7 +3868,7 @@ paths:
         binaries (e.g. images for document scan, face detect, etc.) directly to
         S3, then pass the returned `fileKey` to downstream endpoints in place of
         the binary payload.
-      security: *a1
+      security: *a2
       requestBody:
         required: true
         content:
