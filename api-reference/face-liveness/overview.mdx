@@ -1,15 +1,19 @@
 ---
 title: Face Liveness Overview
-description: Self-hosted, globally available face liveness (presentation-attack detection) via a three-call session flow
+description: Self-hosted, globally available face liveness (presentation-attack detection) as a workflow step
 ---
 
 Custom face liveness confirms that a real, present human is in front of the camera — not a photo, a screen replay, or an injected video. It is **self-hosted and globally available**: unlike region-locked cloud liveness, it runs the same everywhere, scoring each attempt with a purpose-built presentation-attack-detection (PAD) model plus deterministic timing checks.
 
 Most integrations never call these endpoints directly — the [iOS SDK](/integrate/sdks/swift/face-liveness) orchestrates the whole flow for you, both as a drop-in UI and headless. This section documents the underlying REST contract for completeness and for non-SDK clients.
 
+## Prerequisite: a workflow with a Face Liveness step
+
+Custom face liveness runs as the **`face-liveness` step of a verification session** — there is no standalone liveness session. Your backend creates the session ([`POST /v1/sessions`](/api-reference/sessions/create-session)) from a workflow that includes a Face Liveness step; the challenge type your applicant sees and the pass threshold are both configured on that workflow step, not chosen by the client.
+
 ## Challenges
 
-Each session runs one challenge, returned as a **script** the client plays:
+Each Face Liveness step runs one challenge, returned as a **script** the client plays:
 
 | Challenge | Value | What the user does |
 | --- | --- | --- |
@@ -17,27 +21,29 @@ Each session runs one challenge, returned as a **script** the client plays:
 | Movement + Light | `FaceMovementAndLightChallenge` | Same movement, with full-screen color flashes whose reflection is checked. |
 
 <Note>
-The light challenge requires the client to render full-screen color flashes, so it is only available through the SDK's built-in UI. Headless integrations use the movement challenge.
+The light challenge requires the client to render full-screen color flashes, so it is only available through the SDK's built-in UI. Headless integrations use the movement challenge — a step configured for the light challenge throws a validation error from the headless movement call.
 </Note>
 
 ## The flow
 
-A liveness attempt is three calls against a **standalone liveness session** (identified by its `liveness_session_id`):
+A liveness attempt is three **actions** on one endpoint, `POST /v1/sessions/{session_id}/steps/face-liveness`, distinguished by the `action` field in the request body:
 
 <Steps>
-  <Step title="Create a session">
-    [`POST /custom/sessions`](/api-reference/face-liveness/create-session) mints a `liveness_session_id` and returns the challenge script. This call bills your organization once.
+  <Step title="Start">
+    `{ "action": "start" }` — see [Start Face Liveness](/api-reference/face-liveness/create-session). Advances the step and returns a `liveness_session_id` plus the challenge script (config-driven — no `challenge_type` on the request).
   </Step>
   <Step title="Request upload URLs and upload frames">
-    [`POST /custom/sessions/{id}/upload-url`](/api-reference/face-liveness/upload-url) returns presigned S3 `PUT` URLs for the captured frames (and an optional replay clip). You upload the bytes directly to those URLs.
+    `{ "action": "upload-url", "frame_count": 5 }` — see [Request Upload URLs](/api-reference/face-liveness/upload-url). Returns presigned S3 `PUT` URLs for the captured frames (and an optional replay clip). You upload the bytes directly to those URLs.
   </Step>
-  <Step title="Fetch the result">
-    [`GET /custom/sessions/{id}/result`](/api-reference/face-liveness/result) runs the PAD model over the uploaded frames and returns a `status` and a `0–100` `confidence`.
+  <Step title="Complete">
+    `{ "action": "complete" }` — see [Complete Face Liveness](/api-reference/face-liveness/result). Runs the PAD model over the uploaded frames and returns a server-computed `status`, `confidence`, and `passed`.
   </Step>
 </Steps>
 
-All paths are prefixed `/v1/face/liveness`. Every call is authenticated with your `x-api-key`.
+Every call is authenticated with your `x-api-key` and returns the standard step-submission envelope (`step_id`, `step_status`, `failure_reason`, `current_step`, `attempts_remaining`, `session_status`, `session_progress`) alongside the action's own result under a top-level `liveness` key.
 
 ## Result and replay
 
-The result is `{ status, confidence }`. Callers decide the pass threshold (the SDK compares `confidence` against a configurable threshold, default `80`). If a replay clip was uploaded, it is persisted to the session for operator review under `Uploads.faceliveness_preview_clip`.
+`complete` returns `liveness: { status, confidence, passed }`. `passed` is computed server-side against the workflow step's configured threshold (default `70`) — there is no client-supplied threshold. If the Face Liveness step is the last step of the workflow and it passes, the session is submitted automatically.
+
+The score is persisted to the session under `AnalysisData.facelivenessScore`. If a replay clip was uploaded, it is persisted for operator review under `Uploads.faceliveness_preview_clip`.

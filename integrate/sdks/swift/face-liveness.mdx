@@ -9,7 +9,7 @@ The `DeepIDV` iOS SDK provides **custom face liveness**: self-hosted presentatio
 - **Headless** — you own the camera and UI; the SDK contributes the face-geometry guidance, the scoring call, and (optionally) the replay recording. Movement challenge only.
 
 <Info>
-  Custom liveness is scored by the deepidv backend's PAD model — see the [Face Liveness API](/api-reference/face-liveness/overview). The SDK orchestrates the create → upload → score flow for you.
+  Custom liveness is scored by the deepidv backend's PAD model as the `face-liveness` step of a verification session — see the [Face Liveness API](/api-reference/face-liveness/overview). The SDK orchestrates the start → upload → complete flow for you.
 </Info>
 
 ## Requirements
@@ -17,6 +17,7 @@ The `DeepIDV` iOS SDK provides **custom face liveness**: self-hosted presentatio
 - iOS 15.0+
 - Swift 5.9+ / Xcode 15+
 - Camera access — add an `NSCameraUsageDescription` entry to your app's `Info.plist` (e.g. *"Used to verify you're a real, live person"*). Without it, iOS kills the app the moment the camera session starts; the SDK cannot supply this for you since it's an app-level entitlement.
+- A verification `sessionID` from a session created from a workflow that includes a Face Liveness step. The SDK never creates sessions — your backend creates it via [`POST /v1/sessions`](/api-reference/sessions/create-session) and hands the `sessionID` to your app.
 
 ## Install
 
@@ -55,16 +56,18 @@ The result of any liveness flow is a `FaceLivenessResult`:
 public struct FaceLivenessResult {
     public let status: Status        // .succeeded / .inProgress / .failed
     public let confidence: Double?   // 0–100; nil until status == .succeeded or .failed
-    public let passed: Bool          // status == .succeeded && confidence >= threshold
+    public let passed: Bool          // server-computed against the workflow step's configured threshold
 }
 ```
+
+`passed` is computed by the backend against the pass threshold configured on the workflow's Face Liveness step (default `70`) — there is no client-supplied threshold anymore.
 
 ## Drop-in UI
 
 `CustomFaceLivenessView` runs the entire attempt — camera, oval guide, "move closer" prompts, the flashing-light challenge, and the replay recording — and calls you back with the result:
 
 ```swift
-CustomFaceLivenessView(client: client) { result in
+CustomFaceLivenessView(client: client, sessionID: sessionID) { result in
     switch result {
     case .success(let liveness):
         print("passed:", liveness.passed, "confidence:", liveness.confidence ?? 0)
@@ -74,14 +77,14 @@ CustomFaceLivenessView(client: client) { result in
 }
 ```
 
-Pass `confidenceThreshold:` to override the default pass threshold of `80`.
+The challenge played — movement, or movement + light — is whatever the `sessionID`'s workflow configured for its Face Liveness step; there's no `challengeType` to pass.
 
 ## Headless
 
 When you own the camera and UI, drive the movement challenge yourself with three SDK pieces:
 
 - `client.faceProbe(_:)` — per-frame face geometry to time your capture.
-- `client.checkMovementLiveness(frames:clip:confidenceThreshold:)` — uploads the frames and returns the verdict.
+- `client.checkMovementLiveness(sessionID:frames:clip:)` — uploads the frames and returns the verdict.
 - `client.makeMovementReplayRecorder()` — records the smooth replay clip for you.
 
 ### 0. Set up the capture session
@@ -193,9 +196,9 @@ Finalize the replay and pass everything to `checkMovementLiveness`:
 ```swift
 let clip = await replay.finish()   // SDK-encoded mp4 of the scan (nil is fine)
 let result = try await client.checkMovementLiveness(
+    sessionID: sessionID,
     frames: frames,
-    clip: clip,
-    confidenceThreshold: 80
+    clip: clip
 )
 if result.passed { /* live */ }
 ```
@@ -203,8 +206,9 @@ if result.passed { /* live */ }
 - Pass **3–8 frames in capture order**. Fewer than 3 throws `DeepIDVError.validation`; more than 8 is evenly down-sampled to 8.
 - `clip` is optional — omit it to skip the replay. When present, the SDK uploads it as the session's operator replay (`Uploads.faceliveness_preview_clip`).
 - Errors surface as `DeepIDVError` — `.validation` for bad input, `.network` / `.notFound` for endpoint failures.
-- `checkMovementLiveness` creates the underlying [`liveness_session_id`](/api-reference/face-liveness/create-session) internally and runs the full create → upload-url → result flow for you in one call — you don't need to call those REST endpoints yourself. The SDK does not currently surface that id back to you; if you need it for your own audit trail (e.g. to correlate with backoffice review), that's an open follow-up rather than something available today.
-- Call `checkMovementLiveness` once per attempt — each call bills a new session. If it throws `.network`, it's safe to retry with a fresh set of frames (retrying does not reuse the failed attempt's session).
+- `checkMovementLiveness` drives the `start → upload-url → complete` action sequence against `sessionID`'s `face-liveness` step for you in one call — you don't need to call those REST endpoints yourself. The challenge type and pass threshold are owned by that session's workflow step config, not by this call.
+- Call `checkMovementLiveness` once per attempt on the step. If it throws `.network`, it's safe to retry with a fresh set of frames — a retry issues a fresh `start` for the step.
+- If the `sessionID`'s Face Liveness step is configured for the movement + light challenge, `checkMovementLiveness` throws `DeepIDVError.validation` after `start` — the light challenge requires the SDK to render full-screen color flashes, which the headless path can't do.
 
 <Note>
 The flashing-light challenge isn't available headless — it requires the SDK to render full-screen color flashes. Use the drop-in `CustomFaceLivenessView` for that.

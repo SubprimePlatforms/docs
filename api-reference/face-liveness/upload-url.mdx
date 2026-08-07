@@ -1,34 +1,37 @@
 ---
 title: Request Upload URLs
 description: Get presigned URLs for a liveness attempt's frames, timeline, and optional replay clip
-api: POST /v1/face/liveness/custom/sessions/{livenessSessionId}/upload-url
+api: POST /v1/sessions/{session_id}/steps/face-liveness
 ---
 
 ```
-POST /v1/face/liveness/custom/sessions/{livenessSessionId}/upload-url
+POST /v1/sessions/{session_id}/steps/face-liveness
 ```
 
 Mints presigned S3 `PUT` URLs for the captured frames, a timeline file, and — optionally — a replay clip. You upload the bytes directly to the returned URLs; nothing is proxied through the API.
+
+Call this after [`start`](/api-reference/face-liveness/create-session) has run for this session's `face-liveness` step.
 
 ## Request
 
 ### Path parameters
 
-| Parameter           | Type   | Description                                                        |
-| ------------------- | ------ | ----------------------------------------------------------------- |
-| `livenessSessionId` | string | The `liveness_session_id` from [create session](/api-reference/face-liveness/create-session). |
+| Parameter    | Type   | Description                  |
+| ------------ | ------ | ----------------------------- |
+| `session_id` | string | The verification session ID.  |
 
 ### Headers
 
 | Header         | Required | Description         |
-| -------------- | -------- | ------------------- |
-| `x-api-key`    | Yes      | Your API key        |
-| `Content-Type` | Yes      | `application/json`  |
+| -------------- | -------- | -------------------- |
+| `x-api-key`    | Yes      | Your API key         |
+| `Content-Type` | Yes      | `application/json`   |
 
 ### Body parameters
 
 | Parameter        | Type   | Required | Description                                                                                                     |
 | ---------------- | ------ | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `action`         | string | Yes      | Must be `"upload-url"`.                                                                                          |
 | `frame_count`    | number | Yes      | Number of captured frames to upload. **1–8** (at least 3 are needed to score).                                  |
 | `clip_mime_type` | string | No       | Mime of an optional full-attempt replay clip — `video/mp4` or `video/webm`. An unrecognized mime yields no clip URL. |
 
@@ -36,10 +39,10 @@ Mints presigned S3 `PUT` URLs for the captured frames, a timeline file, and — 
 
 <CodeGroup>
 ```bash cURL
-curl -X POST https://api.deepidv.com/v1/face/liveness/custom/sessions/54535e8b-dbfa-43be-9756-00bf6c93afb9/upload-url \
+curl -X POST https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/steps/face-liveness \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "frame_count": 5, "clip_mime_type": "video/mp4" }'
+  -d '{ "action": "upload-url", "frame_count": 5, "clip_mime_type": "video/mp4" }'
 ```
 </CodeGroup>
 
@@ -47,29 +50,40 @@ curl -X POST https://api.deepidv.com/v1/face/liveness/custom/sessions/54535e8b-d
 
 `200 OK`
 
-| Field                | Type     | Description                                                              |
-| -------------------- | -------- | ------------------------------------------------------------------------ |
-| `frame_upload_urls`  | string[] | Presigned `PUT` URLs, one per frame, in order. Upload as `image/jpeg`.   |
-| `frame_keys`         | string[] | The S3 object keys the frames will occupy.                               |
-| `timeline_upload_url`| string   | Presigned `PUT` URL for the timeline JSON. Upload as `application/json`.  |
-| `timeline_key`       | string   | The S3 object key for the timeline.                                      |
-| `clip_upload_url`    | string   | Present only when `clip_mime_type` was recognized. Upload the clip here. |
-| `clip_key`           | string   | Present only when `clip_mime_type` was recognized.                       |
+Same envelope as [`start`](/api-reference/face-liveness/create-session) (`step_id`, `step_status`, `failure_reason`, `current_step`, `attempts_remaining`, `session_status`, `session_progress`), with the `liveness` object for `upload-url`:
+
+| Field                 | Type     | Description                                                              |
+| --------------------- | -------- | ------------------------------------------------------------------------ |
+| `frame_upload_urls`   | string[] | Presigned `PUT` URLs, one per frame, in order. Upload as `image/jpeg`.   |
+| `frame_keys`          | string[] | The S3 object keys the frames will occupy.                               |
+| `timeline_upload_url` | string   | Presigned `PUT` URL for the timeline JSON. Upload as `application/json`.  |
+| `timeline_key`        | string   | The S3 object key for the timeline.                                      |
+| `clip_upload_url`     | string   | Present only when `clip_mime_type` was recognized. Upload the clip here. |
+| `clip_key`            | string   | Present only when `clip_mime_type` was recognized.                       |
 
 ```json
 {
-  "frame_upload_urls": ["https://s3.amazonaws.com/…/frame_0.jpg?X-Amz-…"],
-  "frame_keys": ["<org>/<session>/<session>/frame_0.jpg"],
-  "timeline_upload_url": "https://s3.amazonaws.com/…/timeline.json?X-Amz-…",
-  "timeline_key": "<org>/<session>/<session>/timeline.json",
-  "clip_upload_url": "https://s3.amazonaws.com/…/clip.mp4?X-Amz-…",
-  "clip_key": "<org>/<session>/<session>/clip.mp4"
+  "step_id": "face-liveness",
+  "step_status": "IN_PROGRESS",
+  "failure_reason": null,
+  "current_step": "face-liveness",
+  "attempts_remaining": 3,
+  "session_status": "PENDING",
+  "session_progress": "STARTED",
+  "liveness": {
+    "frame_upload_urls": ["https://s3.amazonaws.com/…/frame_0.jpg?X-Amz-…"],
+    "frame_keys": ["<org>/<session>/<session>/frame_0.jpg"],
+    "timeline_upload_url": "https://s3.amazonaws.com/…/timeline.json?X-Amz-…",
+    "timeline_key": "<org>/<session>/<session>/timeline.json",
+    "clip_upload_url": "https://s3.amazonaws.com/…/clip.mp4?X-Amz-…",
+    "clip_key": "<org>/<session>/<session>/clip.mp4"
+  }
 }
 ```
 
 ## The timeline file
 
-`timeline_upload_url` must be `PUT` with an `application/json` body, but **the server does not currently parse or validate its contents** — scoring reads only the uploaded frames (the PAD model plus the frame-count/order checks described in [result](/api-reference/face-liveness/result)). There is no defined schema today; an empty JSON value such as `{}` or `[]` is sufficient to satisfy the upload.
+`timeline_upload_url` must be `PUT` with an `application/json` body, but **the server does not currently parse or validate its contents** — scoring reads only the uploaded frames (the PAD model plus the frame-count/order checks described in [Complete Face Liveness](/api-reference/face-liveness/result)). There is no defined schema today; an empty JSON value such as `{}` or `[]` is sufficient to satisfy the upload.
 
 <Note>
 This is a placeholder in the current implementation, not a documented contract — a future release may start scoring on real per-frame timing/geometry data uploaded here (mirroring `FaceProbe.widthRatio` / `centerOffset` from the [Swift SDK](/integrate/sdks/swift/face-liveness)), which would change this section. If you're driving the flow through the iOS SDK's headless API instead of raw REST, you don't need to think about this at all — `checkMovementLiveness` uploads a placeholder timeline for you automatically.
@@ -93,8 +107,8 @@ Only the frames and timeline are required to score. The replay clip is best-effo
 
 ### Errors
 
-| Status | Meaning                                                        |
-| ------ | -------------------------------------------------------------- |
-| `400`  | Invalid body (e.g. `frame_count` outside 1–8).                 |
-| `403`  | The `livenessSessionId` does not belong to this session/org.  |
-| `404`  | Unknown liveness session.                                     |
+| Status | Meaning                                                                     |
+| ------ | ----------------------------------------------------------------------------- |
+| `400`  | Invalid body (e.g. `frame_count` outside 1–8).                                |
+| `404`  | Unknown `session_id`.                                                         |
+| `409`  | `FACE_LIVENESS_NOT_STARTED` — `start` hasn't run for this step yet.            |

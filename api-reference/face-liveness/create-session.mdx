@@ -1,40 +1,46 @@
 ---
-title: Create Liveness Session
-description: Mint a custom face-liveness session and receive its challenge script
-api: POST /v1/face/liveness/custom/sessions
+title: Start Face Liveness
+description: Start the Face Liveness step and receive its challenge script
+api: POST /v1/sessions/{session_id}/steps/face-liveness
 ---
 
 ```
-POST /v1/face/liveness/custom/sessions
+POST /v1/sessions/{session_id}/steps/face-liveness
 ```
 
-Creates a standalone custom face-liveness session and returns its `liveness_session_id` along with the **challenge script** the client should play. This call bills your organization once.
+Starts the `face-liveness` step of a verification session and returns a `liveness_session_id` along with the **challenge script** the client should play.
 
-Custom liveness sessions are standalone by design — the returned `liveness_session_id` is the handle used by [`upload-url`](/api-reference/face-liveness/upload-url) and [`result`](/api-reference/face-liveness/result).
+The `session_id` must belong to a session created from a workflow that includes a Face Liveness step (see [Create Session](/api-reference/sessions/create-session)). The challenge type — movement, or movement + light — is chosen by that workflow step's configuration, not by this request.
 
 ## Request
+
+### Path parameters
+
+| Parameter    | Type   | Description                    |
+| ------------ | ------ | ------------------------------ |
+| `session_id` | string | The verification session ID.   |
 
 ### Headers
 
 | Header         | Required | Description                     |
-| -------------- | -------- | ------------------------------- |
-| `x-api-key`    | Yes      | Your API key                    |
-| `Content-Type` | Yes      | `application/json`              |
+| -------------- | -------- | -------------------------------- |
+| `x-api-key`    | Yes      | Your API key                     |
+| `Content-Type` | Yes      | `application/json`               |
 
 ### Body parameters
 
-| Parameter        | Type   | Required | Description                                                                                                    |
-| ---------------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------- |
-| `challenge_type` | string | No       | `FaceMovementChallenge` or `FaceMovementAndLightChallenge`. Defaults to the movement challenge when omitted.   |
+| Parameter | Type   | Required | Description                    |
+| --------- | ------ | -------- | ------------------------------- |
+| `action`  | string | Yes      | Must be `"start"`.               |
 
 ### Example request
 
 <CodeGroup>
 ```bash cURL
-curl -X POST https://api.deepidv.com/v1/face/liveness/custom/sessions \
+curl -X POST https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/steps/face-liveness \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "challenge_type": "FaceMovementChallenge" }'
+  -d '{ "action": "start" }'
 ```
 </CodeGroup>
 
@@ -42,9 +48,24 @@ curl -X POST https://api.deepidv.com/v1/face/liveness/custom/sessions \
 
 `200 OK`
 
+Every step submission returns the same envelope shape, with the action-specific result under `liveness`:
+
+| Field                | Type    | Description                                                                    |
+| -------------------- | ------- | -------------------------------------------------------------------------------- |
+| `step_id`            | string  | `face-liveness`.                                                                  |
+| `step_status`        | string  | Status of this step after the call (e.g. `IN_PROGRESS`).                         |
+| `failure_reason`     | string \| null | Populated only when the step has failed.                                  |
+| `current_step`       | string  | The step the applicant should complete next.                                     |
+| `attempts_remaining` | number  | Attempts left for this step, if the workflow limits retries.                     |
+| `session_status`     | string  | The session's overall status.                                                    |
+| `session_progress`   | string  | `PENDING`, `STARTED`, or `COMPLETED`.                                            |
+| `liveness`           | object  | `{ liveness_session_id, script }` — see below.                                   |
+
+The `liveness` object for `start`:
+
 | Field                 | Type   | Description                                                     |
 | --------------------- | ------ | --------------------------------------------------------------- |
-| `liveness_session_id` | string | The session handle for the upload and result calls.            |
+| `liveness_session_id` | string | The session handle used to correlate `upload-url` and `complete` calls (for your own reference — you don't pass it back in the request). |
 | `script`              | object | The challenge to play (see below).                              |
 
 The `script` object:
@@ -57,18 +78,27 @@ The `script` object:
 
 ```json
 {
-  "liveness_session_id": "54535e8b-dbfa-43be-9756-00bf6c93afb9",
-  "script": {
-    "challengeType": "FaceMovementChallenge",
-    "durationMs": 2000,
-    "steps": [{ "kind": "move-closer", "atMs": 0 }]
+  "step_id": "face-liveness",
+  "step_status": "IN_PROGRESS",
+  "failure_reason": null,
+  "current_step": "face-liveness",
+  "attempts_remaining": 3,
+  "session_status": "PENDING",
+  "session_progress": "STARTED",
+  "liveness": {
+    "liveness_session_id": "54535e8b-dbfa-43be-9756-00bf6c93afb9",
+    "script": {
+      "challengeType": "FaceMovementChallenge",
+      "durationMs": 2000,
+      "steps": [{ "kind": "move-closer", "atMs": 0 }]
+    }
   }
 }
 ```
 
 ### Errors
 
-| Status | Meaning                                              |
-| ------ | ---------------------------------------------------- |
-| `400`  | Invalid body (e.g. an unsupported `challenge_type`). |
-| `402`  | Payment required — the org could not be billed.      |
+| Status | Meaning                                                                                                             |
+| ------ | -------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Bad body (e.g. `action` missing or not `"start"`), or the `face-liveness` step isn't runnable right now (wrong order, already completed, no attempts remaining, etc.). |
+| `404`  | Unknown `session_id`.                                                                                                 |

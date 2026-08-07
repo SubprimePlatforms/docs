@@ -1,37 +1,48 @@
 ---
-title: Get Liveness Result
-description: Score the uploaded frames and return the liveness status and confidence
-api: GET /v1/face/liveness/custom/sessions/{livenessSessionId}/result
+title: Complete Face Liveness
+description: Score the uploaded frames and return the liveness status, confidence, and pass verdict
+api: POST /v1/sessions/{session_id}/steps/face-liveness
 ---
 
 ```
-GET /v1/face/liveness/custom/sessions/{livenessSessionId}/result
+POST /v1/sessions/{session_id}/steps/face-liveness
 ```
 
-Runs the presentation-attack-detection (PAD) model and timing checks over the frames uploaded for the session, and returns the liveness verdict. Call this once the frame `PUT`s from [upload-url](/api-reference/face-liveness/upload-url) have completed.
+Runs the presentation-attack-detection (PAD) model and timing checks over the frames uploaded for this session's `face-liveness` step, and returns the liveness verdict. Call this once the frame `PUT`s from [Request Upload URLs](/api-reference/face-liveness/upload-url) have completed.
 
 The score is persisted to the session (`AnalysisData.facelivenessScore`), and any uploaded replay clip is promoted to `Uploads.faceliveness_preview_clip` for operator review.
+
+If the Face Liveness step is the last step remaining in the workflow and it passes, this call also submits the session.
 
 ## Request
 
 ### Path parameters
 
-| Parameter           | Type   | Description                                                        |
-| ------------------- | ------ | ----------------------------------------------------------------- |
-| `livenessSessionId` | string | The `liveness_session_id` from [create session](/api-reference/face-liveness/create-session). |
+| Parameter    | Type   | Description                  |
+| ------------ | ------ | ----------------------------- |
+| `session_id` | string | The verification session ID.  |
 
 ### Headers
 
-| Header      | Required | Description  |
-| ----------- | -------- | ------------ |
-| `x-api-key` | Yes      | Your API key |
+| Header         | Required | Description         |
+| -------------- | -------- | -------------------- |
+| `x-api-key`    | Yes      | Your API key         |
+| `Content-Type` | Yes      | `application/json`   |
+
+### Body parameters
+
+| Parameter | Type   | Required | Description             |
+| --------- | ------ | -------- | ------------------------ |
+| `action`  | string | Yes      | Must be `"complete"`.     |
 
 ### Example request
 
 <CodeGroup>
 ```bash cURL
-curl https://api.deepidv.com/v1/face/liveness/custom/sessions/54535e8b-dbfa-43be-9756-00bf6c93afb9/result \
-  -H "x-api-key: YOUR_API_KEY"
+curl -X POST https://api.deepidv.com/v1/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/steps/face-liveness \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "action": "complete" }'
 ```
 </CodeGroup>
 
@@ -39,23 +50,37 @@ curl https://api.deepidv.com/v1/face/liveness/custom/sessions/54535e8b-dbfa-43be
 
 `200 OK`
 
-| Field        | Type   | Description                                                            |
-| ------------ | ------ | --------------------------------------------------------------------- |
-| `status`     | string | `SUCCEEDED` or `FAILED`.                                              |
-| `confidence` | number | Liveness confidence on a `0–100` scale.                               |
+Same envelope as [`start`](/api-reference/face-liveness/create-session) (`step_id`, `step_status`, `failure_reason`, `current_step`, `attempts_remaining`, `session_status`, `session_progress`), with the `liveness` object for `complete`:
+
+| Field        | Type    | Description                                                                              |
+| ------------ | ------- | ------------------------------------------------------------------------------------------ |
+| `status`     | string  | `SUCCEEDED` or `FAILED`.                                                                    |
+| `confidence` | number  | Liveness confidence on a `0–100` scale.                                                     |
+| `passed`     | boolean | Server-computed: `status == "SUCCEEDED"` and `confidence` meets the workflow step's configured threshold (default `70`). There is no client-supplied threshold. |
 
 ```json
-{ "status": "SUCCEEDED", "confidence": 92 }
+{
+  "step_id": "face-liveness",
+  "step_status": "PASSED",
+  "failure_reason": null,
+  "current_step": null,
+  "attempts_remaining": 3,
+  "session_status": "SUBMITTED",
+  "session_progress": "COMPLETED",
+  "liveness": { "status": "SUCCEEDED", "confidence": 92, "passed": true }
+}
 ```
 
 <Note>
-A completed check that isn't live is a **success** with a low `confidence`, not an error. Apply your own pass threshold — the SDK treats the attempt as passed when `status == SUCCEEDED` and `confidence` meets the configured threshold (default `80`).
+A completed check that isn't live is a **success** with a low `confidence`, not an error — `passed` will simply be `false`. On a failed attempt the step drops back rather than erroring: retry by calling `start` again (subject to `attempts_remaining`). There is no "result not ready" polling state — `complete` always returns a final verdict for the frames uploaded so far.
 </Note>
 
 An attempt with fewer than 3 uploaded frames is scored `FAILED` / `0` without invoking the model.
 
 ### Errors
 
-| Status | Meaning                    |
-| ------ | -------------------------- |
-| `404`  | Unknown liveness session.  |
+| Status | Meaning                                                              |
+| ------ | ----------------------------------------------------------------------- |
+| `400`  | Bad body — e.g. `action` missing or not `"complete"`.                   |
+| `404`  | Unknown `session_id`.                                                   |
+| `409`  | `FACE_LIVENESS_NOT_STARTED` — `start` hasn't run for this step yet.      |
