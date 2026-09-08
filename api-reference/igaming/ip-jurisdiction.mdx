@@ -10,6 +10,18 @@ POST /v1/igaming/ip-jurisdiction
 
 Resolves the applicant's IP address to a jurisdiction (via MaxMind GeoLite2) and evaluates it against the session's `ip-jurisdiction` step configuration — allowed/blocked jurisdiction lists, plus optional datacenter-IP handling. Persists its result to the session.
 
+Jurisdictions are compared as ISO 3166 codes: a country (`CA`, `US`) or a country-subdivision (`CA-ON`, `US-WA`). The resolved location matches a list entry if either its country code or its `country-subdivision` code is listed. Evaluation order: blocked list → allowed list (when non-empty) → datacenter rule.
+
+<Warning>
+  This check **fails open on unknown locations**. A valid IPv4 address that
+  can't be geolocated — private (`10.x`, `192.168.x`), loopback, reserved, or
+  documentation ranges such as `203.0.113.x`, or a lookup miss — returns
+  `CLEAR` / `allow` with `evidence.locationDetails: "Unknown"`, because the
+  jurisdiction lists can't be applied. Validate that `ip_address` is the
+  applicant's **public** address before calling, and treat a `"Unknown"`
+  location as no signal rather than a pass.
+</Warning>
+
 <Note>
   This check fails **soft**. If an internal error occurs, or the supplied
   `ip_address` isn't a valid IPv4 address, it returns `200` with
@@ -33,7 +45,7 @@ Bodies use **snake_case** field names — there are no camelCase aliases.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `session_id` | string | Yes | The session to score |
-| `ip_address` | string | Yes | The applicant's public **IPv4** address. A non-IPv4 value returns `UNAVAILABLE` (fails soft to `allow`) |
+| `ip_address` | string | Yes | The applicant's public **IPv4** address as seen by your server — not your server's own egress IP. A non-IPv4 value returns `UNAVAILABLE` (fails soft to `allow`) |
 
 ### Example request
 
@@ -90,31 +102,87 @@ response = requests.post(
 | --- | --- | --- |
 | `verdict` | string | `HIT`, `CLEAR`, or `UNAVAILABLE` |
 | `action` | string | `allow`, `flag`, `step-up`, or `block` |
-| `evidence` | object | Details behind the verdict — includes `matchedRule` and `locationDetails.countryIsoCode` |
+| `evidence` | object | Details behind the verdict — see [Evidence](#evidence) below |
 | `escalation` | object \| null | `{ decision: "ESCALATE", type: string, reason: string }` — present only when `action` is `step-up`. A `step-up` is returned only when the step configures an `escalation_type`; otherwise the check downgrades `step-up` to `flag` |
 
 ### Verdicts
 
 | Verdict | Meaning |
 | --- | --- |
-| `HIT` | The IP resolved to a blocked jurisdiction, or matched the datacenter rule |
-| `CLEAR` | The IP's jurisdiction is allowed |
-| `UNAVAILABLE` | The step isn't configured on the workflow, or the IP wasn't valid IPv4 — fails soft to `allow` |
+| `HIT` | The IP resolved to a blocked jurisdiction, was outside a non-empty allowed list, or matched the datacenter rule |
+| `CLEAR` | The IP's jurisdiction is allowed and no datacenter rule fired |
+| `UNAVAILABLE` | The step isn't configured on the workflow, the IP wasn't valid IPv4, or an internal error occurred — fails soft to `allow`. (A lookup that finds no location is `CLEAR` with `locationDetails: "Unknown"`, see above) |
+
+### Evidence
+
+| Field | Present | Description |
+| --- | --- | --- |
+| `locationDetails` | always | Object with `city`, `subdivision`, `subdivisionIsoCode`, `country`, `countryIsoCode`, `postalCode`, `latitude`, `longitude`, `accuracyRadius`, `timeZone`, `continent` (fields absent or `"Unknown"` when MaxMind has no data) — or the string `"Unknown"` when the IP couldn't be geolocated at all |
+| `matchedRule` | on `HIT` | `blocked-list`, `not-in-allowed-list`, or `datacenter-ip` |
+| `asn`, `asnOrg`, `matched`, `feedVersion`, `stale` | on a datacenter hit | Anonymizer-feed details for the matched range (`matched: "datacenter-ranges"`) |
+| `datacenterCheck` | when the feed is unavailable | `"unavailable"` — the jurisdiction verdict still stands, only the datacenter rule was skipped |
+| `reason` | when the step is absent | `"step-not-configured"` |
+
+`trusted_ip_list` entries (CIDRs, or ASNs like `AS64496`) exempt an IP from the **datacenter rule only** — they don't bypass the jurisdiction lists.
 
 ### Error responses
 
 | Status | Description |
 | --- | --- |
 | `400 Bad Request` | Invalid request body — check required fields |
-| `401 Unauthorized` | Missing or invalid API key |
+| `401 Unauthorized` | Invalid or revoked API key |
+| `403 Forbidden` | `x-api-key` header missing |
 | `404 Not Found` | Session not found, or not in your org |
 
 <ResponseExample>
-```json 200
+```json in jurisdiction
 {
   "verdict": "CLEAR",
   "action": "allow",
-  "evidence": { "matchedRule": "allowed", "locationDetails": { "countryIsoCode": "US" } },
+  "evidence": {
+    "locationDetails": {
+      "city": "Toronto",
+      "subdivision": "Ontario",
+      "subdivisionIsoCode": "ON",
+      "country": "Canada",
+      "countryIsoCode": "CA",
+      "postalCode": "M5H",
+      "latitude": 43.6532,
+      "longitude": -79.3832,
+      "accuracyRadius": 20,
+      "timeZone": "America/Toronto",
+      "continent": "North America"
+    }
+  },
+  "escalation": null
+}
+```
+
+```json datacenter IP
+{
+  "verdict": "HIT",
+  "action": "flag",
+  "evidence": {
+    "locationDetails": { "city": "Ashburn", "subdivision": "Virginia", "subdivisionIsoCode": "VA", "country": "United States", "countryIsoCode": "US", "timeZone": "America/New_York", "continent": "North America" },
+    "matchedRule": "datacenter-ip",
+    "asn": 64500,
+    "asnOrg": "EXAMPLE-HOSTING",
+    "matched": "datacenter-ranges",
+    "feedVersion": "3f9c2a7e1b5d4c08",
+    "stale": false
+  },
+  "escalation": null
+}
+```
+
+```json out of jurisdiction
+{
+  "verdict": "HIT",
+  "action": "block",
+  "evidence": {
+    "locationDetails": { "country": "France", "countryIsoCode": "FR", "subdivisionIsoCode": "IDF", "city": "Paris" },
+    "matchedRule": "not-in-allowed-list"
+  },
   "escalation": null
 }
 ```

@@ -9,7 +9,7 @@ All four checks:
 
 - Are session-scoped — the `session_id` must belong to a session in your org
 - Accept `application/json` request bodies using **snake_case** field names (no camelCase aliases)
-- Are driven by the session's **workflow step configuration** — if the corresponding step isn't configured on the session's workflow, the check returns `UNAVAILABLE`
+- Are driven by the session's **workflow step configuration** — if the corresponding step isn't configured on the session's workflow, VPN detection, IP jurisdiction, and anti-cheat return `UNAVAILABLE`; injection detection instead scores with the default config (see [Injection detection](/api-reference/igaming/injection))
 - Persist their result to the session for later retrieval
 
 ## Verdict and action model
@@ -25,14 +25,19 @@ Every check returns a `verdict` (the raw finding) and an `action` (what your int
 | `block`       | Reject the applicant — **the session is marked as failed**         |
 
 <Note>
-  These checks fail **soft**. If an internal error occurs or a required input
-  is missing, the endpoint still returns `200` with `verdict: "UNAVAILABLE"`
-  and `action: "allow"` — it never blocks the applicant or returns a 5xx for
-  this reason. Design your integration to treat `UNAVAILABLE` as "no signal,"
-  not as an error.
+  These checks fail **soft**. If an internal error occurs or an input can't be
+  used (a non-IPv4 address, no detectable face), the endpoint still returns
+  `200` with `verdict: "UNAVAILABLE"` and `action: "allow"` — it never blocks
+  the applicant or returns a 5xx for this reason. Design your integration to
+  treat `UNAVAILABLE` as "no signal," not as an error. A body that fails schema
+  validation (a missing `session_id` or `ip_address`) returns `400` for
+  injection, VPN detection, and IP jurisdiction; anti-cheat returns `200` /
+  `UNAVAILABLE` even then.
 </Note>
 
-A `404` response means the `session_id` either doesn't exist or doesn't belong to your org — the two cases are indistinguishable from the response.
+A `404` response means the `session_id` either doesn't exist or doesn't belong to your org — the two cases are indistinguishable from the response. A request with no `x-api-key` header returns `403`; an invalid key returns `401`.
+
+Each check persists its result onto the session, and the persisted record is often richer than the response (settings snapshot, checked IP, anti-cheat similarity and links). Read it back from `analysis_data` on [Retrieve session](/api-reference/sessions/retrieve-session#igaming-check-data). Run the checks **sequentially** — each one read-modify-writes the session's analysis data, so concurrent calls can overwrite each other's persisted result.
 
 ## Endpoints
 

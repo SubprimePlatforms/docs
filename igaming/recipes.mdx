@@ -51,12 +51,12 @@ Create a workflow with the iGaming steps and the thresholds and actions you want
 </Steps>
 
 <Info>
-  Omit a step's `config` to accept its defaults, or omit a step entirely to skip that check. Every check reads its thresholds and actions from this step config — a session whose workflow doesn't include a given step gets no enforcement from it (VPN, IP jurisdiction, and anti-cheat return `UNAVAILABLE`/`allow`; injection falls back to default thresholds). Note the `vpn_action: "step-up"` above only steps up if you also set an `escalation_type` on the step; without one it resolves to `flag`.
+  Omit a step's `config` to accept its defaults, or omit a step entirely to skip that check. Every check reads its thresholds and actions from this step config. VPN detection, IP jurisdiction, and anti-cheat skip evaluation when their step is absent (`UNAVAILABLE`/`allow`). **Injection detection does not skip**: with no `INJECTION_DETECTION` step it still scores whatever signals you send using the defaults (`action_on_detection: block`, `confidence_threshold: 70`), so only call it on sessions whose workflow includes the step. Note the `vpn_action: "step-up"` above only steps up if you also set an `escalation_type` on the step; without one it resolves to `flag`.
 </Info>
 
 ## Onboarding gate
 
-Create a session **against the workflow above**, run the three standalone checks against it, then aggregate the results into a single decision.
+Create a session **against the workflow above**, run the standalone checks against it one after another, then aggregate the results into a single decision. This is the pattern for an operator-owned sign-up page: your backend holds the API key, your page collects the inputs, and the applicant never leaves your site.
 
 <Steps>
   <Step title="Create a session">
@@ -70,7 +70,9 @@ Create a session **against the workflow above**, run the three standalone checks
         "last_name": "Smith",
         "email": "jane.smith@example.com",
         "phone": "+15192223333",
-        "workflow_id": "wf_igaming_onboarding"
+        "workflow_id": "wf_igaming_onboarding",
+        "send_email_invite": false,
+        "send_phone_invite": false
       }'
     ```
 
@@ -87,16 +89,33 @@ Create a session **against the workflow above**, run the three standalone checks
         email: "jane.smith@example.com",
         phone: "+15192223333",
         workflow_id: "wf_igaming_onboarding",
+        send_email_invite: false,
+        send_phone_invite: false,
       }),
     });
 
-    const { session_id } = await response.json();
+    // The session id is returned as `id` (not `session_id`).
+    const { id: session_id, session_url } = await response.json();
     ```
     </CodeGroup>
+
+    <Info>
+      `send_email_invite` and `send_phone_invite` default to `true`, which emails and texts the applicant a link to deepidv's hosted verification flow. Turn them off when the checks run from your own sign-up page. Keep `session_url` if your workflow also contains hosted steps (for example `ID_VERIFICATION` or `FACE_LIVENESS`) and you want to send the applicant there afterwards. See [Create session](/api-reference/sessions/create-session).
+    </Info>
   </Step>
 
   <Step title="Run VPN detection, IP jurisdiction, and anti-cheat">
-    Call each check standalone with the `session_id`, plus the inputs each check requires. `vpn-detection` and `ip-jurisdiction` both require `ip_address`; `anti-cheat` requires `image`. You can run these in parallel.
+    Call each check standalone with the `session_id`, plus the inputs each check requires. `vpn-detection` and `ip-jurisdiction` both require `ip_address`; `anti-cheat` requires `image`.
+
+    <Warning>
+      **Run the checks one at a time, not in parallel.** Each check reads the session's analysis data, adds its own result, and writes the whole object back. Concurrent calls race and the last writer wins — the responses are correct, but one check's persisted result is silently dropped from the session.
+    </Warning>
+
+    Order matters, too: a check whose action is `block` marks the session **failed**, and anti-cheat returns `UNAVAILABLE` on a failed session. Run the IP checks first and stop early on `block`, or run anti-cheat first if you always want the face enrolled.
+
+    <Note>
+      `ip_address` must be the **applicant's** public IPv4 address as your server sees it (the connecting socket address, or the first hop of `X-Forwarded-For` behind a trusted proxy). Do not look the address up from your own server — that returns your server's egress IP and a VPN on the applicant's side is never seen. If you detect the public IP client-side (for example on a localhost build), do it in the applicant's browser so a browser or system VPN exit is what gets checked. Reject private, loopback, and reserved addresses before calling: both IP checks fail **open** on them (`CLEAR` with an `"Unknown"` location, no ASN). The `203.0.113.42` used in these examples is a documentation address and behaves the same way — substitute a real public IP when you try this.
+    </Note>
 
     <CodeGroup>
     ```bash cURL
@@ -127,15 +146,16 @@ Create a session **against the workflow above**, run the three standalone checks
     ```
 
     ```javascript Node.js
+    // The applicant's public IPv4 as seen by your server (e.g. req.ip behind a trusted proxy).
     const ipAddress = "203.0.113.42";
 
     const calls = [
       {
-        path: "vpn-detection",
+        path: "ip-jurisdiction",
         body: { session_id, ip_address: ipAddress },
       },
       {
-        path: "ip-jurisdiction",
+        path: "vpn-detection",
         body: { session_id, ip_address: ipAddress },
       },
       {
@@ -148,20 +168,27 @@ Create a session **against the workflow above**, run the three standalone checks
       },
     ];
 
-    const results = await Promise.all(
-      calls.map(({ path, body }) =>
-        fetch(`https://api.deepidv.com/v1/igaming/${path}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": "YOUR_API_KEY",
-          },
-          body: JSON.stringify(body),
-        }).then((res) => res.json())
-      )
-    );
+    // Sequential on purpose — see the warning above.
+    const results = [];
+    for (const { path, body } of calls) {
+      const res = await fetch(`https://api.deepidv.com/v1/igaming/${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "YOUR_API_KEY",
+        },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      results.push(result);
+      if (result.action === "block") break; // session is now failed
+    }
     ```
     </CodeGroup>
+
+    <Info>
+      To add **injection detection**, collect `device_integrity`, `media_source`, and `frame_timing` in the applicant's browser during selfie capture and post them to `POST /v1/igaming/injection` before anti-cheat. The scores are *trust* scores (higher is cleaner). See [Injection detection → Collecting the signals](/api-reference/igaming/injection#collecting-the-signals).
+    </Info>
   </Step>
 
   <Step title="Aggregate the actions">
@@ -186,8 +213,12 @@ Create a session **against the workflow above**, run the three standalone checks
     ```
 
     <Info>
-      If `worst` is `block`, the session is already marked **failed** — you don't need to fail it yourself, just stop onboarding.
+      If `worst` is `block`, the session is already marked **failed** — you don't need to fail it yourself, just stop onboarding. Treat `UNAVAILABLE` as "no signal", not as a pass.
     </Info>
+  </Step>
+
+  <Step title="Read the results later">
+    Every check persists its full result on the session. Fetch it with [Retrieve session](/api-reference/sessions/retrieve-session) and read `session_record.analysis_data.ip_jurisdiction_data`, `vpn_detection_data`, `injection_detection_data`, and `anti_cheat_data`. The persisted anti-cheat record is richer than the redacted API response (similarity, matched session, multi-accounting links). A `block` also shows as `"status": "FAILED"`.
   </Step>
 </Steps>
 

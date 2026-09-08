@@ -12,6 +12,10 @@ Deletes the session's **own** enrolled face (Rekognition) and its dedup crosswal
 
 This acts on the session's own enrollment only — there is **no** matched-session fallback. A `DUPLICATE` session that never enrolled its own face returns `deleted: false`. This call is idempotent.
 
+<Warning>
+  A face exclusion lives on the enrollment record, so purging a session that was excluded via [Exclude Face](/api-reference/igaming/exclude-face) or [Exclude Applicant](/api-reference/igaming/exclude-applicant) also **removes that face entry from the self-exclusion registry**. Identity (document-number) entries are unaffected. To keep a person excluded after deleting their biometric data, make sure an identity entry exists first.
+</Warning>
+
 ## Request
 
 ### Path parameters
@@ -71,7 +75,8 @@ response = requests.delete(
 | Status | Description |
 |--------|-------------|
 | `400 Bad Request` | Missing or malformed `session_id` |
-| `401 Unauthorized` | Missing or invalid API key |
+| `401 Unauthorized` | Invalid or revoked API key |
+| `403 Forbidden` | `x-api-key` header missing |
 | `500 Internal Server Error` | Unexpected server error |
 
 <ResponseExample>

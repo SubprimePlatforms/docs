@@ -22,6 +22,14 @@ Runs face-based deduplication against your org's enrollment collection, and chec
   `action: "allow"` rather than blocking or erroring.
 </Note>
 
+<Warning>
+  Anti-cheat only evaluates sessions that are **not** in a terminal status
+  (`FAILED`, `REJECTED`, `VOIDED`, `EXPIRED`) and whose workflow includes the
+  `ANTI_CHEAT` step; otherwise it returns `UNAVAILABLE` / `allow`. If another
+  check blocked the session first, anti-cheat will not run — order your checks
+  accordingly.
+</Warning>
+
 ## Request
 
 ### Headers
@@ -38,8 +46,8 @@ Bodies use **snake_case** field names — there are no camelCase aliases.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `session_id` | string | Yes | The session to score |
-| `image` | string | Yes | The applicant's face as a **base64-encoded JPEG/PNG** — raw base64 with no `data:` prefix |
-| `device_fingerprint` | string | No | Stable per-device identifier used as a multi-accounting signal |
+| `image` | string | Yes | The applicant's face as a **base64-encoded JPEG/PNG** — raw base64 with no `data:` prefix. The whole JSON body must stay under **5 MB** (roughly a 3.5 MB image); a 640×480 selfie is ample |
+| `device_fingerprint` | string | No | Stable per-device identifier used as a multi-accounting signal (when `signal_device_enabled`). In a server-to-server flow this and the biometric match are the linkage signals that always apply; the IP signal reads the submission IP captured by deepidv's hosted flow, and document/name signals need OCR'd ID data on the session |
 
 ### Example request
 
@@ -104,20 +112,21 @@ response = requests.post(
 
 | Verdict | Meaning |
 | --- | --- |
-| `UNIQUE` | First sight of this face — enrolled into the org's dedup collection |
-| `DUPLICATE` | The face matches an existing enrollment |
-| `SELF_EXCLUSION` | The applicant's document number or matched face is on the self-exclusion registry |
-| `UNAVAILABLE` | No usable face, or the check was skipped — fails soft to `allow` |
+| `UNIQUE` | First sight of this face — enrolled into the org's dedup collection. Action is `allow` unless multi-accounting links fire |
+| `DUPLICATE` | The face matches an existing enrollment at or above `match_threshold` — action is `action_on_duplicate` (default `flag`). The face is **not** enrolled again |
+| `SELF_EXCLUSION` | The applicant's document number or matched face is on the self-exclusion registry — action is always `block` |
+| `UNAVAILABLE` | No usable face, the step isn't configured, the session is terminal, or the body was invalid — fails soft to `allow` |
 
 <Note>
-  When `action` is `block`, the session is marked as **failed**.
+  When `action` is `block`, the session is marked as **failed**. The response is redacted to `verdict` and `action`; the full record — `similarity`, `matched_session_id`, `face_id`, multi-accounting `links`, and the applied actions — is persisted as `anti_cheat_data` on the session. See [Retrieve session → iGaming check data](/api-reference/sessions/retrieve-session#igaming-check-data).
 </Note>
 
 ### Error responses
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Missing or invalid API key |
+| `401 Unauthorized` | Invalid or revoked API key |
+| `403 Forbidden` | `x-api-key` header missing |
 | `404 Not Found` | Session not found, or not in your org |
 
 <ResponseExample>

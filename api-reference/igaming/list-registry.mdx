@@ -85,7 +85,8 @@ response = requests.get(
 | Status | Description |
 |--------|-------------|
 | `400 Bad Request` | Invalid `limit` (out of range or not a number) |
-| `401 Unauthorized` | Missing or invalid API key |
+| `401 Unauthorized` | Invalid or revoked API key |
+| `403 Forbidden` | `x-api-key` header missing |
 | `500 Internal Server Error` | Unexpected server error |
 
 <ResponseExample>
@@ -96,7 +97,7 @@ response = requests.get(
       "type": "identity",
       "document_number": "P1234567",
       "reason": "self-requested exclusion",
-      "added_by": "32961365-ce2d-4642-8a4d-3ea21daef0f1",
+      "added_by": "8f14e45f-ceea-467a-9575-d0c1b8a0b1e2",
       "added_at": "2026-07-27T18:31:09.877Z"
     },
     {

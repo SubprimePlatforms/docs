@@ -95,7 +95,8 @@ response = requests.post(
 | Status | Description |
 |--------|-------------|
 | `400 Bad Request` | Missing or malformed `session_id` |
-| `401 Unauthorized` | Missing or invalid API key |
+| `401 Unauthorized` | Invalid or revoked API key |
+| `403 Forbidden` | `x-api-key` header missing |
 | `404 Not Found` | Session not found, or not in your organization |
 | `500 Internal Server Error` | Unexpected server error |
 

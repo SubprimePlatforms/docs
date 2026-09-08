@@ -62,13 +62,17 @@ A `DUPLICATE` applicant never enrolled its own face — the face on file belongs
   </Step>
 
   <Step title="Purge">
-    `DELETE /v1/igaming/anti-cheat/{session_id}` removes the enrolled face for that session — a GDPR deletion request or a manual reset. Purging removes the face's enrollment; it does not remove a self-exclusion registry entry on its own.
+    `DELETE /v1/igaming/anti-cheat/{session_id}` removes the enrolled face for that session — a GDPR deletion request or a manual reset. Because a face exclusion is stored on the enrollment, purging also removes that session's **face** entry from the registry. **Identity** entries (document numbers) stay in place.
   </Step>
 </Steps>
 
 ## Face purge (data deletion)
 
 `DELETE /v1/igaming/anti-cheat/{session_id}` removes the face enrolled for that session. Use it to satisfy a GDPR data deletion request, or to reset a session's enrollment so it no longer counts toward dedup matching. Like the other management endpoints, purge fails hard: a real error returns `500`.
+
+<Warning>
+  Purging a face that was self-excluded drops the face exclusion with it. If the person must stay excluded, add an identity entry (their document number) before purging — [Exclude applicant](#exclude-an-applicant-preferred-path) does this automatically when the session has a scanned document.
+</Warning>
 
 See the [Purge enrollment reference](/api-reference/igaming/purge-enrollment) for the full request and response schema.
 
