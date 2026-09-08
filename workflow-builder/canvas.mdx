@@ -1,0 +1,195 @@
+---
+title: Canvas mode
+description: "The SVG WorkflowCanvas: props, defs, constants, node chrome, start node, connectors, layout, interactions, minimap, and toolbar"
+---
+
+> `WorkflowCanvas` is the free-form SVG surface behind `viewMode === 'canvas'`: one dot-grid `<svg>` whose single transform group holds the connectors, the Start pill, and the `foreignObject` step cards, driven by one window pointer effect and framed by a minimap and a zoom toolbar.
+
+## Where it fits
+
+When `viewMode === 'canvas'`, the center column of the three-column layout described in [Overview](/workflow-builder/overview) is `WorkflowCanvas`. There is no `DndContext` in this mode; the palette-to-canvas drop uses native HTML5 drag and drop, and the drop handler itself is documented in [Adding steps](/workflow-builder/adding-steps). The `nodePositions`, `connections`, and `viewport` shapes the canvas reads and writes are defined on [State model](/workflow-builder/state-model).
+
+## Props
+
+`WorkflowCanvas` takes the following props:
+
+```js
+workflow, setWorkflow,
+selectedStepId, setSelectedStepId,
+isStepCovered, disabled,
+nodePositions, setNodePositions,
+connections, setConnections,
+viewport, setViewport,
+resolvedOrder, isStepGated, onGatedDrop
+```
+
+Of these, `resolvedOrder` supplies the number shown in each node's step badge (`resolvedOrder[key]`), `selectedStepId` / `setSelectedStepId` drive node selection (and therefore the right panel), and `isStepGated` / `onGatedDrop` are consulted by the HTML5 drop handler before a dropped service becomes a step.
+
+## Structure
+
+The component is a relative `<Box>` (the drop target) holding one full-size `<svg>`.
+
+### Defs
+
+The `<defs>` block declares three reusable definitions:
+
+| id | Kind | Parameters |
+|---|---|---|
+| `canvas-dot-grid` | pattern | grid `CANVAS_GRID_SIZE=20`, dot `r=1`, `patternTransform` follows the viewport |
+| `conn-glow` | blur filter | applied to the visible path of a selected connector |
+| `arrow-marker` | marker | grey arrowhead, referenced as `markerEnd="url(#arrow-marker)"` |
+
+### Transform group
+
+Everything in world space sits inside one `<g>` whose transform is the viewport:
+
+```jsx
+<g transform={`translate(${vp.x},${vp.y}) scale(${vp.zoom})`}>
+```
+
+Its children render in this order (SVG paints later children on top):
+
+1. connections
+2. drawing preview
+3. start node
+4. step nodes
+
+## Constants
+
+| Constant | Value |
+|---|---|
+| `CANVAS_GRID_SIZE` | `20` |
+| `CANVAS_NODE_WIDTH` | `280` |
+| `CANVAS_NODE_HEIGHT` | `100` |
+| `CANVAS_START_NODE_WIDTH` | `120` |
+| `CANVAS_START_NODE_HEIGHT` | `50` |
+| `CANVAS_MIN_ZOOM` | `0.15` |
+| `CANVAS_MAX_ZOOM` | `2.5` |
+| `CANVAS_ANCHOR_RADIUS` | `7` |
+| `CANVAS_ZOOM_STEP` | `0.08` |
+| `CANVAS_ELBOW_GAP` | `40` |
+| `CANVAS_CORNER_RADIUS` | `12` |
+
+Positions snap to the 20px grid with `snap(v)=Math.round(v/20)*20`. The HTML5 drop handler on [Adding steps](/workflow-builder/adding-steps) uses `snap()` together with `CANVAS_NODE_WIDTH` and `CANVAS_NODE_HEIGHT` to center a new node on the cursor.
+
+## Node chrome
+
+Each step node is a `<g>` → `<foreignObject width=280 height=100>` → an HTML `<Box>` card.
+
+### Card
+
+| Property | Value |
+|---|---|
+| `borderRadius` | `12` |
+| `background` | `background.paper` |
+| border | `2px primary.main` when selected, else `1px divider` |
+| box-shadow (selected) | `0 0 0 3px varAlpha(primary.mainChannel,0.15)` |
+| `padding` | `'12px 16px'` |
+| cursor | `grab` / `grabbing` |
+
+Inside the card:
+
+- A **40×40 gradient tile**, `borderRadius:8`, `background: getStepGradient(step.id)`, containing the step icon in white at 20px.
+- A **text block**: the title at `subtitle` weight, size 14, with the cost (or "included") right-aligned; below it the description at subtitle size 12. Both lines truncate with an ellipsis.
+
+`getStepGradient` and the icon resolver are documented on [Step catalog and gating](/workflow-builder/step-catalog).
+
+### SVG siblings
+
+<Note>
+The badge, delete button, and anchor dots are drawn as SVG siblings of the `foreignObject`, not as HTML inside it, to dodge a Safari `foreignObject` bug.
+</Note>
+
+| Element | Shape and placement | Behavior |
+|---|---|---|
+| Step-number badge | `circle r=12` at top-left, filled `text.primary` | shows `resolvedOrder[key]` |
+| Delete button | red `circle r=11` at top-right with `×` | `onClick` deletes the step and bridges the gap |
+| Anchor dots | one `<circle r=7>` (`CANVAS_ANCHOR_RADIUS`) per `CANVAS_ANCHOR_OFFSETS` | `opacity 0` unless hovered, selected, or drawing; `cursor:crosshair` |
+
+## Start node
+
+The start node is a pill-shaped `foreignObject` (radius 25, success-tinted) showing `solar:play-bold` and a "Start" label; its dimensions are `CANVAS_START_NODE_WIDTH=120` × `CANVAS_START_NODE_HEIGHT=50`. It exposes **outgoing-only anchors**, on the bottom and the right. Its id is the `'__start__'` constant described on [State model](/workflow-builder/state-model).
+
+## Connectors
+
+`buildConnectionPath` produces the path for each connection:
+
+- **Routing**: orthogonal elbow routing via `computeOrthogonalRoute` → `buildRoundedPolyline`, with 12px arc corners (`CANVAS_CORNER_RADIUS`), unless the connection carries explicit `waypoints`.
+- **Two paths per connector**: a wide transparent **hit path** (`strokeWidth` 16, clickable) plus a visible **grey path** with `markerEnd="url(#arrow-marker)"`.
+- **Selected**: the visible path switches to primary and takes the `conn-glow` filter.
+- **Drawing preview**: while a connection is being drawn, a dashed primary path is rendered (the second child of the transform group).
+
+<Note>
+Dropping a service on the canvas positions the node but does NOT auto-connect it — the user draws the edge from an anchor. See [Adding steps](/workflow-builder/adding-steps).
+</Note>
+
+## Layout
+
+Layout helpers live in `canvas-layout-utils.js`:
+
+- **Initial placement**: Start is centered at the top; each step is placed at `y = snap(120 + i*140)`.
+- **`fitToContent`**: 80px padding, zoom ≤ 1.5; runs once.
+- **`autoLayout`**: a vertical cascade with 140px spacing.
+- **Empty state**: a centered `solar:widget-add-bold-duotone` icon with the copy "Drag a service here to start / building your workflow".
+
+## Interactivity
+
+Pointer and keyboard behavior is split between `useCanvasInteractions.js` and the canvas handlers.
+
+### Select
+
+- A `mousedown` on a node sets `selectedStepId` (which opens the [right config panel](/workflow-builder/config-panel)) and starts a node drag.
+- A `mousedown` on empty SVG pans the viewport and deselects; the handler guards with `e.target instanceof SVGElement`.
+- A click on a connection selects that connection.
+
+### Delete
+
+- `Delete` / `Backspace` removes the selected connection or step — never Start — and auto-bridges the gap with `removeStepsWithBridge`.
+- The per-node red `×` button does the same for its own node.
+
+### One window pointer effect
+
+Pan, node-drag, draw-connection, waypoint-drag, and zoom all run through a single `window` `mousemove` / `mouseup` effect that branches on an active ref.
+
+- **Draw-connection**: on `mouseup`, hit-tests target anchors within 20px and pushes a new connection only if the source has no outgoing connection and the target has no incoming one.
+
+<Warning>
+The draw-connection check — at most one outgoing per source and one incoming per target — is what enforces linear flow on the canvas.
+</Warning>
+
+### Wheel zoom
+
+The wheel listener is registered with `{passive:false}`, zooms around the cursor, and clamps the result (`CANVAS_MIN_ZOOM` … `CANVAS_MAX_ZOOM`).
+
+### Reorder (list mode)
+
+In list mode, reordering uses dnd-kit `arrayMove` and is pinning-aware; the reorder handlers are on [Adding steps](/workflow-builder/adding-steps).
+
+## Minimap
+
+`CanvasMinimap` is 180×130 and draws connection lines, node rects (selected = primary), and the viewport rectangle. Clicking it recenters the viewport.
+
+## Toolbar
+
+`CanvasToolbar` is a floating bottom-center pill containing `−` / zoom% / `＋` and a **Fit** button.
+
+<Warning>
+There is no undo/redo.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Adding steps" icon="hand" href="/workflow-builder/adding-steps">
+    The HTML5 drop handler that places a node on this canvas, including coupling and pinning.
+  </Card>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The `canvasData` shape: connections, node positions, and viewport.
+  </Card>
+  <Card title="Right config panel" icon="panel-right" href="/workflow-builder/config-panel">
+    What opens when a node is selected.
+  </Card>
+  <Card title="Saving a workflow" icon="save" href="/workflow-builder/saving">
+    How the chain drawn here is ordered, validated, and serialized.
+  </Card>
+</CardGroup>

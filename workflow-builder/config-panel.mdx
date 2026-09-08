@@ -1,0 +1,194 @@
+---
+title: Right config panel
+description: "RightConfigPanel and StepSettingsPanel: sizing, the id-verification expand chevron, dispatch order, the propertyGroups schema, every field type, and the persistence reducers"
+---
+
+> The right-hand column of the builder: a 350px panel (600px only for `id-verification`) that dispatches the selected step to a bespoke editor or to the generic `propertyGroups` renderer, and writes every edit back into the jotai workflow atom through one of three `setWorkflow` reducers.
+
+The panel is the third column of the three-column layout described in the [overview](/workflow-builder/overview). Selecting a node on the [canvas](/workflow-builder/canvas) or in the list sets `selectedStepId`, and this panel renders whatever that step needs.
+
+## Where the components live
+
+Both components live in a single file, `StepSettingsPanel.jsx`:
+
+| Export | Component |
+|---|---|
+| Named export | `RightConfigPanel` |
+| Default export | `StepSettingsPanel` |
+
+`RightConfigPanel` owns the column chrome, the expand chevron, and the dispatch. `StepSettingsPanel` is the generic `propertyGroups` renderer that the dispatch falls through to.
+
+## Panel sizing and styles
+
+- `width: effectiveExpanded ? 600 : 350`, animated with `transition:'width 0.25s ease'`.
+- Left border.
+- `background.paper` background.
+- `position:relative`, `overflow:visible` (so the chevron pill can hang outside the left edge).
+- Body: `<Box sx={{ py:3, flexGrow:1, overflowY:'auto' }}>`.
+
+## Expand chevron (id-verification only)
+
+A 28×48 pill pinned to the panel's left edge:
+
+- Positioned with `translate(-100%,-50%)`.
+- `borderRadius:'10px 0 0 10px'`.
+- Icon `eva:chevron-right-fill` when expanded, else `eva:chevron-left-fill`.
+
+The expanded width is gated on the step type, not just the toggle:
+
+```js
+effectiveExpanded = expanded && selectedStep.id === 'id-verification'
+```
+
+<Warning>
+The expand chevron and the 600px width exist for `id-verification` ONLY. Every other step renders the 350px panel with no chevron, regardless of the `expanded` flag.
+</Warning>
+
+## Dispatch order
+
+The four branches are mutually exclusive and are evaluated in this order:
+
+1. **`selectedStep.id === 'phone-verification'`** → the bespoke tabbed `PhoneVerificationSettings`.
+2. **`PHONE_INTEL_BLOCK_IDS.includes(id)`** (and not phone-verification) → `<PhoneIntelBlock stepId={id} />`.
+3. **Otherwise** → the generic `StepSettingsPanel`, driven by `step.propertyGroups`.
+4. **No `selectedStep`** → a centered empty state:
+   - `<Iconify icon="ph:gear" width={48} sx={{color:'text.disabled', mb:2}}/>`
+   - `subtitle1` "Configure Settings"
+   - `body2` hint with `whiteSpace:'pre-line'`
+
+## The propertyGroups data model
+
+The generic renderer is driven entirely by the step's `propertyGroups` array (deep-cloned from the catalog template when the step is added; see [State model](/workflow-builder/state-model) and [Step catalog](/workflow-builder/step-catalog)).
+
+```text
+propertyGroups: [{
+  groupId, groupName, groupTooltip?, groupIcon?,
+  parentToggle?,          // a propId (in ANY group); group hidden when that value is falsy
+  properties: [{
+    id, label, sublabel?, type, value,
+    options?: [{ value, label, hint?, cost?, flag?, disabled? }],
+    min?, max?, step?, unit?, marks?: [{value,label}], showValue?, linkedGroup?,
+    lowerLabel?, upperLabel?, lowerColor?, middleColor?, upperColor?,
+    requirement?: string | { id, equals } | { id, notEquals },  // conditional visibility
+    requirementInverse?: string, disabled?, locked?, flag?, ...
+  }]
+}]
+```
+
+### i18n key patterns
+
+Labels are translated with English as the `defaultValue`:
+
+| Scope | Key pattern |
+|---|---|
+| Group | `stepConfig.<step.id>.<groupId>.<field>` |
+| Property | `….<propId>.<field>` |
+| Option | `….<propId>.options.<value>.<field>` |
+
+## Group loop
+
+For each group, the renderer applies these rules in turn:
+
+- **Hidden filter**: properties with `type:'hidden'` are filtered out; the remaining properties form `visibleProperties`.
+- **Removed groups**: `REMOVED_PROPERTY_GROUPS = {'id-classification-settings'}` are skipped.
+- **`parentToggle`**: a propId that may live in ANY group; the group is hidden when that value is falsy.
+- **`requirement`** (conditional visibility):
+  - a `string` ⇒ the referenced prop must be `=== true`
+  - `{id,equals}` ⇒ the referenced prop must equal the value
+  - `{id,notEquals}` ⇒ the referenced prop must not equal the value
+- **`requirementInverse`** (a `string` propId) is also applied when computing visibility.
+- **Disable rule**: a field is disabled when `locked || disabled || !requirementMet`.
+
+<Note>
+A disabled, non-locked `boolean` is force-set to `false` — it does not merely grey out.
+</Note>
+
+### Header card and step-up alert
+
+Above the groups, the header card renders:
+
+1. A 50px gradient tile.
+2. The step label.
+3. `h6` "Configure Settings".
+4. A `Divider`.
+5. A step-up escalation `Alert`, shown only for steps in `STEP_UP_GUARD_STEPS`:
+
+```js
+STEP_UP_GUARD_STEPS = ['ip-jurisdiction','vpn-detection','injection-detection']
+```
+
+### No groups
+
+When a step has no groups to render, the panel shows a centered icon + the step label + "No configurable options".
+
+## Field types
+
+Fields are rendered by a flat `{prop.type === 'X' && (…)}` chain. Each field is wrapped in `<Box key={prop.id} sx={{opacity:isDisabled?0.5:1}}>`.
+
+| type | renders as |
+|---|---|
+| `hidden` | filtered out |
+| `boolean` | `Switch` in `FormControlLabel` (`labelPlacement` start) in a tinted Stack; optional `FlagIcon` + `sublabel` |
+| `text` | `TextField fullWidth size=small multiline` |
+| `country-multiselect` | `CountrySelect multiple getValue="code"` |
+| `select` | `FormControl` + `Select`; items show optional `FlagIcon`, italic `hint`, `$cost` |
+| `object` | custom-form **pages/fields** builder (`FormFieldEditor` per field; `MAX_FIELDS_PER_PAGE=5`; Add Field / Add Page) |
+| `doc-upload` | document-list editor (`TextField` rows + flags + minimum-optional-uploads) |
+| `data-extraction` | per-document extraction-rule editor |
+| `text-list` | numbered `TextField` rows + "Add Prompt"; items `{text}` |
+| `multiselect-table` | `MultiSelectTable` |
+| `country-id-table` | `CountryIdTable` |
+| `age-restriction-country-category` | `AgeRestrictionCountryCategory` (writes sibling hidden `country-category-minimum-age`) |
+| `slider` | MUI `Slider` (single), `marks`, `%`/value readout; `linkedGroup==='env-weights'` → `updateLinkedWeights` (keeps 3 weights summing to 100) |
+| `range` | two-thumb `Slider` `[lower,upper]`, tri-color rail + three status chips |
+| `questionnaire-template-toggles` | `QuestionnaireTemplateToggles` |
+| `esign-template-select` / `esign-document-setup` | e-sign template picker / document+field-placement canvas |
+| `proofcall-questions` | question editor with call cost/duration estimate |
+| `education-institution-picker` | modal picker over CA/US universities |
+| `country-customize` / `jurisdiction-picker` / `weight-display` | per-country toggle modal / `JurisdictionPicker` / read-only weight bars |
+
+<Note>
+There is no top-level `number`, `radio`, `autocomplete`, or `divider` type. The types `short-text`, `dropdown`, `checkbox`, `yes-no`, `date`, and `number` exist only as **custom-form sub-field types** in `CUSTOM_FORM_FIELD_TYPES`, used by the `object` editor via `FormFieldEditor` + `OptionsListEditor`. Their options are stored as `{option1,option2,…}`, max 10.
+</Note>
+
+## Persistence reducers
+
+Every editor calls one of these `setWorkflow` reducers. Each locates the step by `(s.instanceId||s.id) === (step.instanceId||step.id)`:
+
+```jsx
+const updatePropertyValue = (groupId, propId, newValue) => setWorkflow((prev)=>({ ...prev,
+  steps: prev.steps.map((s)=> (s.instanceId||s.id)===(step.instanceId||step.id) ? { ...s,
+    propertyGroups: s.propertyGroups?.map((g)=> g.groupId===groupId ? { ...g,
+      properties: g.properties.map((p)=> p.id===propId ? { ...p, value:newValue } : p) } : g) } : s) }));
+// updatePropertyValues(groupId, valuesObj) — writes several props at once (e-sign template select)
+// updateLinkedWeights(groupId, changedId, newValue) — proportional redistribute to sum 100 (round 5)
+```
+
+| Reducer | Purpose |
+|---|---|
+| `updatePropertyValue(groupId, propId, newValue)` | Writes one property value |
+| `updatePropertyValues(groupId, valuesObj)` | Writes several props at once (e-sign template select) |
+| `updateLinkedWeights(groupId, changedId, newValue)` | Proportional redistribute to sum 100 (round 5) |
+
+<Note>
+Nested editors build the whole new value locally and call `updatePropertyValue` once.
+</Note>
+
+Edited values land in `step.propertyGroups[].properties[].value`; the [save flow](/workflow-builder/saving) later flattens them into `config: { [groupId]: { [propId]: value } }`.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The step object, its `instanceId`, and how `propertyGroups` are deep-cloned on add.
+  </Card>
+  <Card title="Step catalog and gating" icon="boxes" href="/workflow-builder/step-catalog">
+    `WORKFLOW_STEPS_OPTIONS`, where each step's `propertyGroups` template comes from.
+  </Card>
+  <Card title="Canvas mode" icon="layout-grid" href="/workflow-builder/canvas">
+    How selecting a node sets `selectedStepId` and opens this panel.
+  </Card>
+  <Card title="Saving a workflow" icon="save" href="/workflow-builder/saving">
+    How property values are serialized into the `config` payload.
+  </Card>
+</CardGroup>

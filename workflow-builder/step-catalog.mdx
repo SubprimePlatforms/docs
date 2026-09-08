@@ -1,0 +1,189 @@
+---
+title: Step catalog and gating
+description: WORKFLOW_STEPS_OPTIONS, per-step gradients, the id-based resolvers, and the plan and environment gating rules
+---
+
+> Every service the Simple builder can place is a plain-object template in `WORKFLOW_STEPS_OPTIONS`; its gradient, its service mapping, and whether it is locked are all resolved externally from the entry's `id`.
+
+This page covers the catalog constants and the small utility module that reads them. How the palette lists and filters these templates is on [Left palette](/workflow-builder/palette); how a template becomes a placed step is on [Adding steps](/workflow-builder/adding-steps).
+
+## Catalog entry shape
+
+`WORKFLOW_STEPS_OPTIONS` is an array of ~39 plain-object step templates. Each entry has this shape:
+
+```js
+{
+  id,            // kebab-case, unique
+  label, description,
+  icon,          // Iconify id (Solar bold-duotone)
+  category,      // 'Verify' | 'Docs' | 'Screen' | 'Crypto' | 'Gaming'
+  propertyGroups?, // config schema (see §6); may be [] or absent
+  coupled?, devOnly?, gated?, advancedOnly?, costLabel?, // optional flags
+}
+```
+
+<Note>
+There is **no** per-entry `gradient` or `service` field. Both are resolved externally by `id`: the gradient through `STEP_ICON_GRADIENTS` and the service through `WORKFLOW_STEP_TO_SERVICE_MAP`, both documented below.
+</Note>
+
+| Field | Notes |
+|---|---|
+| `id` | kebab-case, unique; the key for every external lookup on this page |
+| `label`, `description` | Display strings |
+| `icon` | Iconify id (Solar bold-duotone) |
+| `category` | One of `'Verify'`, `'Docs'`, `'Screen'`, `'Crypto'`, `'Gaming'` |
+| `propertyGroups?` | Config schema; may be `[]` or absent. The `§6` in the comment refers to the schema documented on [Right config panel](/workflow-builder/config-panel) |
+| `coupled?` | Optional flag; coupled steps cascade on add and remove (see [State model](/workflow-builder/state-model)) |
+| `devOnly?` | Optional flag; gated outside the dev environment (see Gating below) |
+| `gated?` | Optional flag; always gated |
+| `advancedOnly?` | Optional flag; excluded by `getAvailableServiceData` |
+| `costLabel?` | Optional flag |
+
+### Category counts
+
+| Category | Entries |
+|---|---|
+| Verify | 14 |
+| Screen | 14 |
+| Docs | 6 |
+| Gaming | 4 |
+| Crypto | 1 |
+
+## Representative entries
+
+Five entries, verbatim:
+
+```js
+{ id: 'id-verification', label: 'ID Verification', description: 'Verify government-issued identity documents',
+  icon: 'solar:user-id-bold-duotone', category: 'Verify', propertyGroups: [ /* large; see §6 */ ] }
+{ id: 'pep-sanctions', label: 'PEP/Sanctions', description: 'Check against global PEP and sanctions lists',
+  icon: 'solar:shield-check-bold-duotone', category: 'Screen' }
+{ id: 'ai-bank-statement-analysis', label: 'Bank Statement Analysis', description: 'AI-powered analysis of bank statements',
+  icon: 'solar:document-text-bold-duotone', category: 'Docs', coupled: true }
+{ id: 'crypto-wallet-screening', label: 'Wallet Verification', description: 'Screen connected crypto wallets across chains and exchanges',
+  icon: 'solar:wallet-bold-duotone', category: 'Crypto', devOnly: true, propertyGroups: [ /* ... */ ] }
+{ id: 'vpn-check', label: 'VPN Check', description: 'Detect VPNs, proxies, Tor, and hosting-provider IPs',
+  icon: 'solar:shield-keyhole-bold-duotone', category: 'Screen', advancedOnly: true }
+```
+
+What each one demonstrates:
+
+- `id-verification` carries a large `propertyGroups` schema.
+- `pep-sanctions` is a bare entry with no optional fields.
+- `ai-bank-statement-analysis` sets `coupled: true`.
+- `crypto-wallet-screening` sets `devOnly: true` and also carries `propertyGroups`.
+- `vpn-check` sets `advancedOnly: true`.
+
+## Icon gradients
+
+`STEP_ICON_GRADIENTS` is a flat map of the shape `{ [stepId]: 'linear-gradient(135deg, #hex, #hex)' }`: iOS-style, 135°, two stops. Examples:
+
+```js
+'id-verification': 'linear-gradient(135deg, #007AFF, #5AC8FA)',
+'face-liveness':   'linear-gradient(135deg, #AF52DE, #DA8FFF)',
+'deepfake-detection':'linear-gradient(135deg, #FF2D55, #FF6961)',
+'age-estimation':  'linear-gradient(135deg, #FF9500, #FFBD44)',
+'pep-sanctions':   'linear-gradient(135deg, #34C759, #63E888)',
+'adverse-media':   'linear-gradient(135deg, #FF3B30, #FF6B6B)',
+'document-upload': 'linear-gradient(135deg, #00C7BE, #63E6D4)',
+'e-signature':     'linear-gradient(135deg, #30B0C7, #64D2FF)',
+consent:           'linear-gradient(135deg, #34C759, #63E888)',
+'credit-check':    'linear-gradient(135deg, #FF9F0A, #FFBD44)',
+kyb:               'linear-gradient(135deg, #8B6914, #C49B2A)',
+'crypto-wallet-screening':'linear-gradient(135deg, #F7931A, #FDB84D)',
+```
+
+## Resolvers
+
+Three id-based resolvers live in `workflow-builder-utils.js`:
+
+```js
+export const getStepIcon = (stepId) =>
+  WORKFLOW_STEPS_OPTIONS.find((s) => s.id === stepId)?.icon || 'solar:widget-bold-duotone';
+export const getStepGradient = (stepId) =>
+  STEP_ICON_GRADIENTS[stepId] || 'linear-gradient(135deg, #8E8E93, #AEAEB2)'; // grey fallback
+export const getStepDescription = (stepId) => WORKFLOW_STEPS_OPTIONS.find((s)=>s.id===stepId)?.description || '';
+```
+
+| Resolver | Fallback when the id is unknown |
+|---|---|
+| `getStepIcon` | `'solar:widget-bold-duotone'` |
+| `getStepGradient` | `'linear-gradient(135deg, #8E8E93, #AEAEB2)'` (grey) |
+| `getStepDescription` | `''` |
+
+<Note>
+Because the persisted step strips `icon`, icon and gradient are always re-resolved from `id`. Never rely on a stored `icon` value to render a step tile.
+</Note>
+
+### Other utilities
+
+The same module also exports `isCoupledStep`, `getStepCost`, `resolveStepServices`, and `sanitizeStepForWorkflow`. `sanitizeStepForWorkflow` keeps only `{id,label,icon,propertyGroups}`; the list-mode drop handler spreads its result and adds an `instanceId` (see [Adding steps](/workflow-builder/adding-steps)). Coupled steps and `COUPLED_STEPS` are described on [State model](/workflow-builder/state-model).
+
+## Gating
+
+Two checks decide whether a catalog entry can be added: flag and environment gating in `isGatedStep`, and plan gating in `isWorkflowStepAvailable`. `getAvailableServiceData` combines the plan check with the `advancedOnly` flag.
+
+```js
+export const isGatedStep = (service) => {
+  if (service.gated) return true;                     // always gated
+  if (service.devOnly && !isDevEnvironment) return true; // dev-only outside dev
+  return false;
+};
+export const isWorkflowStepAvailable = (stepId, availableServices) => {
+  if (!availableServices?.length) return true;
+  const serviceType = WORKFLOW_STEP_TO_SERVICE_MAP[stepId];
+  if (!serviceType) return true;                      // OMITTED from the map ⇒ always available
+  return availableServices.includes(serviceType);
+};
+export const getAvailableServiceData = (availableServices) =>
+  SERVICE_DATA.filter((s) => !s.advancedOnly && isWorkflowStepAvailable(s.id, availableServices));
+```
+
+How each function decides:
+
+- `isGatedStep(service)` returns `true` when `service.gated` is set (always gated), or when `service.devOnly` is set and `isDevEnvironment` is false (dev-only outside dev). Otherwise it returns `false`.
+- `isWorkflowStepAvailable(stepId, availableServices)` returns `true` when `availableServices` is missing or empty, `true` when the step id has no entry in `WORKFLOW_STEP_TO_SERVICE_MAP`, and otherwise `availableServices.includes(serviceType)`.
+- `getAvailableServiceData(availableServices)` filters `SERVICE_DATA` to entries that are not `advancedOnly` and pass `isWorkflowStepAvailable`. The palette's filter chain starts from this result (see [Left palette](/workflow-builder/palette)).
+
+### Step-to-service map
+
+`WORKFLOW_STEP_TO_SERVICE_MAP` maps ~25 step ids → `SERVICE_TYPES` values, for example `'id-verification'` → `'ID_VERIFICATION'`.
+
+<Note>
+A step whose id is **not** in the map is never plan-gated: `isWorkflowStepAvailable` returns `true` for it whatever `availableServices` contains. Omitted from the map means always available.
+</Note>
+
+### The isStepGated wrapper
+
+The builder wraps `isGatedStep` as `isStepGated`, additionally gating `white-label` when the org's whitelabel isn't configured.
+
+### Feature locked dialog
+
+A gated palette card, on click or drop, opens a `FeatureLockedDialog` instead of adding the step. The dialog copy is:
+
+```text
+{feature} hasn't been activated for this account yet. Contact our sales team…
+```
+
+The primary button is labelled **Contact sales**.
+
+<Warning>
+A gated card never adds a step. Both the list-mode and canvas-mode drop handlers run the gate check first and hand off to the dialog instead of building a step (see [Adding steps](/workflow-builder/adding-steps)).
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Left palette" icon="palette" href="/workflow-builder/palette">
+    Search, category tabs, the filter chain that starts from `getAvailableServiceData`, and the palette card that renders `getStepGradient`.
+  </Card>
+  <Card title="Adding steps" icon="mouse-pointer-click" href="/workflow-builder/adding-steps">
+    How a dropped template becomes a step, including the gate check, `sanitizeStepForWorkflow`, and coupled-step cascades.
+  </Card>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The step and connection shapes, `COUPLED_STEPS`, and bottom-pinned step ids.
+  </Card>
+  <Card title="Right config panel" icon="sliders-horizontal" href="/workflow-builder/config-panel">
+    The `propertyGroups` schema that catalog entries may carry, and every field type it renders.
+  </Card>
+</CardGroup>

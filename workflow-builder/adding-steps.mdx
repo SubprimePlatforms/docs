@@ -1,0 +1,138 @@
+---
+title: Adding steps
+description: How a dropped service becomes a step in list mode and canvas mode, including coupling, pinning, and connection rebuilds
+---
+
+> A palette card dropped into the center column becomes a step through one of two independent code paths — a dnd-kit pipeline in list mode, a native HTML5 `onDrop` handler in canvas mode — and both finish by selecting the new instance.
+
+The Simple builder has no add-step button. Every entry in `workflow.steps` is created by dragging a service card out of the left palette and dropping it in the center column. Which handler receives the drop depends on `viewMode`: list mode (`'builder'`) runs inside a dnd-kit `DndContext`, while canvas mode (`'canvas'`) uses native HTML5 drag-and-drop with no `DndContext` at all. The palette's two matching drag mechanisms are documented in [Left palette](/workflow-builder/palette); the step and connection shapes the handlers write are in [State model](/workflow-builder/state-model).
+
+## List mode (dnd-kit)
+
+In list mode the palette and the center column share one `DndContext`, which wires three handlers: `onDragStart`, `onDragOver`, and `onDragEnd`. The last two do the work described below.
+
+### Id namespaces and `parseNodeDropId`
+
+Every draggable and droppable id is namespaced so a single handler can tell a palette card from a placed step:
+
+- `palette:${id}` — a palette card; `id` is the catalog step id.
+- `chart:${instanceId||id}` — a placed step in the chain; falls back to `id` when the step has no `instanceId`.
+
+Both forms are parsed with `parseNodeDropId`.
+
+### `handleDragOver`: live reorder
+
+`handleDragOver` handles the chart → chart case — an existing step dragged over another existing step:
+
+1. Reorders the chain live via `arrayMove`.
+2. Is blocked by `isReorderValidWithPinning`, so a move that would break bottom pinning is refused.
+3. Then rebuilds connections and swaps positions.
+
+The bottom-pinned step ids that `isReorderValidWithPinning` protects are listed in [State model](/workflow-builder/state-model).
+
+### `handleDragEnd`: two drop targets
+
+`handleDragEnd` accepts a palette card on either of two targets:
+
+| Drop target | Result |
+|---|---|
+| A step card | Inserts the new step after that step's index |
+| Empty canvas (`over.id === 'workflow-canvas'`) | Appends the new step to the end of the chain |
+
+### The add pipeline
+
+Both drop targets run the same ordered pipeline.
+
+<Steps>
+  <Step title="Gate check">
+    Run the gate check on the dropped service first. A gated service never reaches the chain — see [Step catalog and gating](/workflow-builder/step-catalog) for `isStepGated` and the `FeatureLockedDialog` it opens instead of adding.
+  </Step>
+  <Step title="Build the step">
+    ```js
+    { ...sanitizeStepForWorkflow(service), instanceId: `${id}-${Date.now()}` }
+    ```
+
+    `sanitizeStepForWorkflow` keeps only `{id,label,icon,propertyGroups}`; `instanceId` is unique per placed instance and keys positions and connections.
+  </Step>
+  <Step title="Auto-add coupled steps">
+    Look up `COUPLED_STEPS[id]` and add each coupled step, applying `COUPLED_PROPERTY_OVERRIDES`.
+  </Step>
+  <Step title="Enforce pinning and overrides">
+    Run `enforceBottomPinningOnSteps` and `enforceCoupledOverridesOnSteps` over the resulting steps array.
+  </Step>
+  <Step title="Rebuild the chain">
+    ```js
+    setCanvasConnections(rebuildChainWithPinning(steps))
+    ```
+  </Step>
+  <Step title="Select the new step">
+    ```js
+    setSelectedStepId(newInstanceId)
+    ```
+
+    Selecting the new instance opens it in the [right config panel](/workflow-builder/config-panel).
+  </Step>
+</Steps>
+
+### Droppable, sortable context, and connectors
+
+| Element | Value |
+|---|---|
+| Droppable canvas id | `'workflow-canvas'` |
+| Step node component | `SortableStepNode` |
+| Sortable context | `SortableContext` with `verticalListSortingStrategy` |
+| Connector box between nodes | 2px × 24px, `#E2E8F0` |
+
+## Canvas mode (HTML5)
+
+Canvas mode renders the SVG `WorkflowCanvas` with no `DndContext`. The palette card writes `service.id` into the drag payload under the `'application/workflow-step'` type (see [Left palette](/workflow-builder/palette)), and the canvas container is the drop target.
+
+### `onDragOver`
+
+The container's `onDragOver` sets `dropEffect='copy'`.
+
+### `onDrop`
+
+```jsx
+const stepId = e.dataTransfer.getData('application/workflow-step');
+const canvas = screenToCanvas(e.clientX, e.clientY, viewport, getSvgRect());
+const stepDef = WORKFLOW_STEPS_OPTIONS.find((s) => s.id === stepId);
+if (isStepGated?.(stepDef)) return onGatedDrop?.(stepDef);
+const instanceId = `${stepId}-${Date.now()}`;
+const newStep = { id: stepDef.id, label: stepDef.label, icon: stepDef.icon, instanceId,
+  ...(stepDef.propertyGroups ? { propertyGroups: JSON.parse(JSON.stringify(stepDef.propertyGroups)) } : {}) };
+setWorkflow((p)=>({ ...p, steps:[...p.steps, newStep, ...coupled] }));
+setNodePositions((p)=>({ ...p, [instanceId]: { x: snap(canvas.x - CANVAS_NODE_WIDTH/2), y: snap(canvas.y - CANVAS_NODE_HEIGHT/2) }, /* coupled stacked +140 */ }));
+setSelectedStepId(instanceId);
+```
+
+Reading the handler in order:
+
+1. Reads the step id from the `'application/workflow-step'` payload.
+2. Converts the pointer position to canvas coordinates with `screenToCanvas(e.clientX, e.clientY, viewport, getSvgRect())`.
+3. Resolves `stepDef` from `WORKFLOW_STEPS_OPTIONS`. If `isStepGated?.(stepDef)` is truthy, it returns `onGatedDrop?.(stepDef)` and adds nothing.
+4. Builds `newStep` from `id`, `label`, `icon`, and `instanceId`, spreading in a deep clone (`JSON.parse(JSON.stringify(...))`) of `propertyGroups` only when the template has them.
+5. Appends `newStep` followed by `...coupled` (the auto-added coupled steps) to `steps`.
+6. Positions the node so the drop point is its center — `snap(canvas.x - CANVAS_NODE_WIDTH/2)`, `snap(canvas.y - CANVAS_NODE_HEIGHT/2)` — and stacks coupled steps at +140, the slot marked by the `/* coupled stacked +140 */` comment. `CANVAS_NODE_WIDTH`, `CANVAS_NODE_HEIGHT`, and `snap` are defined in [Canvas mode](/workflow-builder/canvas).
+7. Selects the new instance.
+
+<Warning>
+  Canvas drop positions the node but does **NOT** auto-connect it — the user draws the edge (see [Canvas mode](/workflow-builder/canvas)). There is **no "+" add-step affordance**; steps are added only by drag.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Left palette" icon="palette" href="/workflow-builder/palette">
+    The palette card and the two drag mechanisms that feed these drop handlers
+  </Card>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    Step and connection shapes, bottom pinning, and coupled steps
+  </Card>
+  <Card title="Step catalog and gating" icon="lock" href="/workflow-builder/step-catalog">
+    The gate check that runs before any step is built
+  </Card>
+  <Card title="Canvas mode" icon="layout-grid" href="/workflow-builder/canvas">
+    The SVG canvas that receives HTML5 drops and where edges are drawn
+  </Card>
+</CardGroup>

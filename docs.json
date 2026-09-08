@@ -197,6 +197,39 @@
             "pages": ["chain-layer/faq", "chain-layer/reference"]
           }
         ]
+      },
+      {
+        "tab": "Workflow Builder",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": ["workflow-builder/overview"]
+          },
+          {
+            "group": "Data Model",
+            "pages": [
+              "workflow-builder/state-model",
+              "workflow-builder/step-catalog"
+            ]
+          },
+          {
+            "group": "Builder Surfaces",
+            "pages": [
+              "workflow-builder/palette",
+              "workflow-builder/adding-steps",
+              "workflow-builder/canvas",
+              "workflow-builder/config-panel",
+              "workflow-builder/client-preview"
+            ]
+          },
+          {
+            "group": "Persistence & Delivery",
+            "pages": [
+              "workflow-builder/saving",
+              "workflow-builder/build-order"
+            ]
+          }
+        ]
       }
     ],
     "global": {
