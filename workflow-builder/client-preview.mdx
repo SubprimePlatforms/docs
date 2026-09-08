@@ -1,0 +1,301 @@
+---
+title: Client preview
+description: "The applicant-side preview: device frame, views, the step component registry, master-verification injection, the beats system, progress stepper, and the receipt"
+---
+
+> `ClientPreview.jsx` renders the applicant's side of the workflow inside a device frame — a welcome screen, one mock screen per step, and a static receipt — driven by its own arrow-and-beat navigation rather than by the builder's selected step.
+
+The client preview is what the center column shows when `viewMode === 'preview'` (see [Overview](/workflow-builder/overview) for the view-mode toggle and the zoom controls that replace it in preview mode). This page documents `ClientPreview` in the order it composes: the device frame, the views, the step component registry, master-verification injection, navigation, the beats system, the progress stepper, the receipt, and the overlay invariant.
+
+## One component, two device modes
+
+`ClientPreview` is a single component. The whitelabel page reuses it through a thin `DevicePreview` wrapper.
+
+<Warning>
+Do **NOT** fork `ClientPreview`. The whitelabel page reuses the same component via the thin `DevicePreview` wrapper.
+</Warning>
+
+The two device modes and the preview color constants:
+
+```js
+DEVICE_SIZES = { mobile:{width:390,height:760}, desktop:{width:700,height:560} };
+VERIFY_COLORS = { primary:'#0782DF', primaryLight:'#E8F4FD', primaryDark:'#0676CC', success:'#22C55E', error:'#FF5630', ... };
+```
+
+## Device frame
+
+The frame is a dark bezel wrapping a "screen", scaled as a unit:
+
+- **Bezel** — a `Box` with `bgcolor:'#1E1E1E'`, `borderRadius: mobile?5:2`, `p:1.5`, and a big drop shadow.
+- **Screen** — the `screenRef` `Box` inside the bezel: `background: theme?.backgroundColor||'white'`, `borderRadius: mobile?3.5:1`, `overflow:hidden`, column flex, scrollbars hidden.
+- **Scaling** — the whole frame scales by `transform: scale(zoomLevel)` with `transformOrigin:'top center'`.
+- **Portal target** — `screenRef` is also the portal target (`PreviewPortalContext`) for modal overlays.
+
+<Note>
+There is **no iPhone notch or status bar**. The only chrome inside the screen is the pinned header described next.
+</Note>
+
+### Pinned header and `headerClearance`
+
+The pinned header is absolutely positioned with `zIndex:0`, `background.paper`, and `boxShadow: shadows[3]`. Its anatomy:
+
+- an 80×8 drag-pill, and
+- a logo-left row with a static accessibility control and an `EN` language control — non-interactive mocks.
+
+Each scrolling view reserves `pt: headerClearance` so its content clears the header.
+
+## Views
+
+Views are keyed by the `currentStepIndex` state, where `n` is the number of steps the preview shows:
+
+| `currentStepIndex` | View |
+|---|---|
+| `-1` | Welcome |
+| `0..n-1` | Step |
+| `n` | Complete |
+
+The steps the preview shows are derived from the workflow's raw steps:
+
+```js
+steps = injectMasterVerification(rawSteps.filter((s)=> !EXCLUDED_FROM_PREVIEW.has(s.id)));
+EXCLUDED_FROM_PREVIEW = { 'ai-bank-statement-analysis','white-label','ip-jurisdiction','vpn-detection' }; // no component, no dot
+```
+
+<Note>
+Steps in `EXCLUDED_FROM_PREVIEW` have no preview component and no navigation dot. `injectMasterVerification` is described under Master-verification injection below.
+</Note>
+
+### Welcome
+
+Centered: the org name (in the primary color), the invitation, `/assets/icons/ic-mail.svg`, and "Accept Invitation".
+
+### Step
+
+A `Scrollbar` wrapping the current step's component in a card. Content is centered, except for the steps in `TOP_ALIGNED_STEP_IDS`, which top-align instead of centering:
+
+```js
+TOP_ALIGNED_STEP_IDS = {'custom-form','kyb','proofcall','credit-check'}
+```
+
+### Complete
+
+The receipt (see Receipt below).
+
+### Empty, whitelabel, and `skipWelcome`
+
+- **Empty workflow** → a centered "preview empty" message.
+- **Whitelabel** → a `scopedTheme` (`createTheme` with primary/text/divider) wraps the views.
+- **`skipWelcome`** → jumps past the welcome view.
+
+## Step component registry
+
+`renderStepContent` picks the current step's preview component from `STEP_COMPONENTS` by step id, with a `DefaultStep` fallback:
+
+```js
+STEP_COMPONENTS = {
+  'anti-cheat':AntiCheatStep, 'address-verification':AddressVerificationStep, 'id-verification':IdVerificationStep,
+  'face-liveness':FaceLivenessStep, 'deepfake-detection':DeepfakeDetectionStep, 'custom-form':CustomFormStep,
+  'document-upload':DocumentUploadStep, 'custom-prompt':CustomPromptStep, 'e-signature':ESignatureStep,
+  consent:ConsentStep, 'credit-check':CreditCheckStep, 'pep-sanctions':PepAdverseMediaCaptureStep,
+  'adverse-media':PepAdverseMediaCaptureStep, 'background-check':BackgroundCheckIntakeStep,
+  'criminal-background-check':BackgroundCheckStep, 'financial-crime-check':BackgroundCheckStep,
+  'vulnerable-sector-check':BackgroundCheckStep, kyb:KybStep, 'education-confirmation':BackgroundCheckStep,
+  'age-estimation':AgeEstimationStep, 'bank-statement-upload':BankStatementStep, 'title-search':TitleSearchStep,
+  proofcall:ProofCallStep, 'phone-verification':PhoneVerificationStep, 'master-verification':MasterVerificationStep,
+  'injection-detection':InjectionDetectionStep,
+};
+```
+
+Several ids share one component: `pep-sanctions` and `adverse-media` both mount `PepAdverseMediaCaptureStep`; `criminal-background-check`, `financial-crime-check`, `vulnerable-sector-check`, and `education-confirmation` all mount `BackgroundCheckStep`.
+
+### Prop contract
+
+Every registered component receives the same uniform props:
+
+```js
+{ step, onContinue, branding, enterFrom, deviceMode }
+```
+
+### `DefaultStep`
+
+`DefaultStep` is a tinted box showing `step.icon` at 48px in the primary color. It renders for any step id that is not in `STEP_COMPONENTS`.
+
+## Master-verification injection
+
+`injectMasterVerification` collapses the camera-based sub-steps into one synthetic `master-verification` step, placed **FIRST** in the preview's step list. The synthetic step mounts `MasterVerificationStep` from the registry.
+
+The sub-step ids that collapse into it:
+
+```text
+MASTER_CAMERA_SUB_STEP_IDS = {id-verification, face-liveness, deepfake-detection, age-estimation, pep-sanctions, adverse-media, passport-nfc-scanner, custom-prompt}
+```
+
+Inside the master step, `id-verification` expands into two rows:
+
+| Row | Mounts |
+|---|---|
+| "ID Verification" | `IdVerificationStep` with `scope="id"` |
+| "Face Match" | `IdVerificationStep` with `scope="face"` |
+
+## Sync and navigation
+
+<Warning>
+The preview does **NOT** auto-cycle, and it is **NOT** bound to the builder's *selected* step. It is its own linear walk: welcome → each step → complete.
+</Warning>
+
+Navigation controls:
+
+- **Left/right arrows** — advance one beat at a time (see Beats system below); when the current step has no further beat, an arrow moves a whole step.
+- **Nav dots** — clickable. The active dot uses the branding primary color and is width 18 (versus 8 for the others). Step dots carry a tooltip.
+- **`goToStep(i)`** — jumps directly to index `i`; the receipt's Reset button uses it.
+
+## Beats system
+
+Implemented in `use-preview-beats.js`. A *beat* is one screen an end user would see. The arrows advance one beat at a time, so a whole flow can be narrated without clicking inside the mock.
+
+### Default beat state
+
+```js
+DEFAULT_BEAT_STATE = { beats:['_only'], currentBeatId:'_only', label:null, hasNext:false, hasPrev:false };
+```
+
+### `useBeatController`
+
+`useBeatController({scrollToTop})` is owned by `ClientPreview`. It holds:
+
+- `beatState` — React state holding the current beat descriptor.
+- `beatHandlersRef` — a ref holding `{next,prev}`, so the arrows call the freshest closure without a render.
+- `report(descriptor)` — updates `beatState` only when the descriptor differs.
+- `resetBeats()` — called on step switch.
+
+### `usePreviewBeats`
+
+Each step component calls `usePreviewBeats(descriptor)` once per render. An unkeyed effect reports the descriptor through context, and the hook returns `{isArrowDriven, scrollToTop}`.
+
+<Note>
+Passing `null` reports nothing. `MasterVerificationStep` does this so that an open row's child owns the report.
+</Note>
+
+### Arrow wiring
+
+```js
+arrowCanGoForward = canGoForward || beatState.hasNext
+```
+
+- `handleNext` calls the beat's `next()` if present (staying in the step); otherwise it advances a whole step.
+- `handlePrev` mirrors this, passing `enterFrom='end'` when crossing back into the previous step.
+- The beat caption shows only when `beats.length>1`.
+
+### Three beat patterns to reproduce
+
+<AccordionGroup>
+<Accordion title="(a) Auto-timer chain — FaceLiveness">
+
+A timed chain of beats that ends by calling `onContinue` automatically:
+
+```text
+centering 1200 → challenge 1500 → loading 1500 → success 2000ms
+```
+
+- After the `success` beat elapses, the step auto-calls `onContinue`.
+- A component-scoped `manualControlRef` latches auto-play off once the viewer drives a beat within the step.
+- The `success` beat uses staged CSS keyframes; all of them are `animation:none` under `prefers-reduced-motion`.
+
+</Accordion>
+<Accordion title="(b) Click/timer hybrid — PhoneVerification">
+
+A click starts the flow, a timer completes it, and a second click continues:
+
+```text
+idle → (Start) → in-progress → (1800ms) → completed → (Continue)
+```
+
+</Accordion>
+<Accordion title="(c) Derived-state beats — DocumentUpload and IdVerification">
+
+`DocumentUploadStep` and `IdVerificationStep` build their beat list from their own state, so clicking inside the mock and arrowing from outside share one cursor.
+
+</Accordion>
+</AccordionGroup>
+
+## Progress stepper
+
+Implemented in `preview-progress-stepper.jsx`. All dots share one color: the branding primary, else `primary.main`. The active dot is full opacity at width 18; the other dots are width 8 at opacity 0.5.
+
+<Note>
+The stepper shows progress **within** a multi-phase step (for example FaceLiveness `['centering','challenge']`), not across the workflow.
+</Note>
+
+## Receipt
+
+The complete view is a static "ready" verification receipt. Top to bottom:
+
+1. A submitted title and body.
+2. `<ReceiptStamp>`.
+3. `<ReceiptActions>`.
+4. A full-width **Reset** button that calls `goToStep(skipWelcome?0:-1)`.
+
+<Note>
+The receipt has no fetch, no loading state, and no error state — it always renders as "ready".
+</Note>
+
+### ReceiptStamp
+
+A perforated dark ticket drawn as an SVG with `preserveAspectRatio="none"`, sized `STAMP_WIDTH=389` by `STAMP_HEIGHT=460`.
+
+| Element | Details |
+|---|---|
+| Background | `#1F1F23` → `#2B2B30` gradient |
+| Scalloped edge | A mask punching circles of `r=6`: 8 top, 8 bottom, 10 left, 10 right |
+| SVG ids | Mask and gradient ids scoped via `useId()` |
+| QR (top-left) | `QRCodeSVG` from `qrcode.react`, 60px, white on transparent, `level="M"` |
+| Postmark (top-right) | Date badge showing `dayjs().format('YYYY.MM.DD')` |
+| Emblem | `/logo/logo-emblem.svg`, rendered white via `filter:'brightness(0) invert(1)'` |
+| Heading and subtitle | Passed as children |
+| Footer | Attestation id, shortened with `truncateMiddle` |
+
+<Note>
+The stamp is deliberately unbranded.
+</Note>
+
+### ReceiptActions
+
+Every control is inert — it looks right and does nothing.
+
+| Element | Details |
+|---|---|
+| Wallet badges | Apple and Google wallet SVG badges from `/assets/illustrations/workflow-preview/{apple,google}-wallet.svg`; height 48 on desktop, 36 on mobile |
+| Attestation row | IDV tint badge + the attestation id + an inert Copy button (`solar:copy-bold`) |
+| Downloads table | Two rows — receipt and bundle — each with an inert Download button (`solar:download-bold`) |
+
+### Branding pickup
+
+The IDV tint, the icon color, and the Reset button pick up `branding.primaryColor`.
+
+## Overlay invariant
+
+Modal overlays portal into `screenRef`. To keep them contained and scrollable inside the screen:
+
+- the overlay `Card` gets `maxHeight:'100%'` plus a flex column layout, and
+- its `CardContent` gets `overflowY:'auto'` plus `minHeight:0`.
+
+<Warning>
+Capping the `Card` instead silently fails. The overflow must live on `CardContent`.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="layout-grid" href="/workflow-builder/overview">
+    The three-column layout, the view-mode toggle, and the zoom controls that appear in preview mode
+  </Card>
+  <Card title="Step catalog and gating" icon="list-checks" href="/workflow-builder/step-catalog">
+    The step ids and icons that the registry and DefaultStep resolve against
+  </Card>
+  <Card title="Right config panel" icon="panel-right" href="/workflow-builder/config-panel">
+    Where a step's propertyGroups are edited before the preview renders it
+  </Card>
+  <Card title="Build order and acceptance" icon="rocket" href="/workflow-builder/build-order">
+    Where ClientPreview sits in the rebuild sequence and the preview acceptance check
+  </Card>
+</CardGroup>

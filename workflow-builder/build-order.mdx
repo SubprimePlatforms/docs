@@ -1,0 +1,104 @@
+---
+title: Build order and acceptance
+description: The suggested implementation sequence for a faithful rebuild and the acceptance checks it must pass
+---
+
+> Build the Simple workflow builder bottom-up — constants, then state, then each surface in turn — and sign the rebuild off against the acceptance checklist below.
+
+This page closes the Workflow Builder reference. It orders the work so that every layer exists before the layer that depends on it, and it turns the spec's acceptance paragraph into an explicit, clause-by-clause checklist. Each build step links to the page that documents what it covers; nothing here re-documents those pages.
+
+## Suggested build order
+
+Build in this sequence. Later steps consume the constants, atoms, and utilities produced by earlier ones.
+
+<Steps>
+  <Step title="Constants and resolvers">
+    Constants: `WORKFLOW_STEPS_OPTIONS`, `STEP_ICON_GRADIENTS`, `WORKFLOW_STEP_TO_SERVICE_MAP`, `SERVICE_TYPES`, coupling/pinning sets, canvas constants + `workflow-builder-utils` resolvers/gating.
+
+    - Step templates, gradients, the step-to-service map, and the `workflow-builder-utils` resolvers and gating helpers are documented in [Step catalog and gating](/workflow-builder/step-catalog).
+    - The coupling and bottom-pinning sets are documented in [State model](/workflow-builder/state-model).
+    - The canvas constants are documented in [Canvas mode](/workflow-builder/canvas).
+  </Step>
+  <Step title="State atoms">
+    `workflowAtom` + derived atoms.
+
+    See [State model](/workflow-builder/state-model).
+  </Step>
+  <Step title="Palette">
+    Palette (tabs, search, filter, both drag cards).
+
+    See [Left palette](/workflow-builder/palette).
+  </Step>
+  <Step title="List mode">
+    List mode (dnd-kit sortable chain + drop/reorder + coupling/pinning).
+
+    See [Adding steps](/workflow-builder/adding-steps).
+  </Step>
+  <Step title="Canvas mode">
+    Canvas mode (SVG, node chrome, anchors, connectors, draw/select/delete/pan/zoom, minimap, toolbar, HTML5 drop).
+
+    See [Canvas mode](/workflow-builder/canvas); the HTML5 drop handler is covered in [Adding steps](/workflow-builder/adding-steps).
+  </Step>
+  <Step title="Right config panel">
+    `RightConfigPanel`/`StepSettingsPanel` (dispatch, `propertyGroups` renderer, all field types, persistence, special editors).
+
+    See [Right config panel](/workflow-builder/config-panel).
+  </Step>
+  <Step title="Client preview">
+    `ClientPreview` (frame, registry, master-verification injection, beats, stepper, receipt).
+
+    See [Client preview](/workflow-builder/client-preview).
+  </Step>
+  <Step title="Save, serialize, endpoints">
+    Save/serialize/endpoints.
+
+    See [Saving a workflow](/workflow-builder/saving); the public create endpoint is documented at [Create workflow](/api-reference/workflows/create-workflow).
+  </Step>
+</Steps>
+
+## Acceptance checks
+
+A rebuild is accepted when every row below passes. Each row is one clause of the spec's acceptance criteria, stated as the action to perform and the result that must be observed; the reference column points to the page that defines the expected behavior in detail.
+
+| Check | Pass condition | Reference |
+|---|---|---|
+| Drag a step from each category tab | A node appears with the right gradient tile + icon + cost | [Left palette](/workflow-builder/palette), [Step catalog and gating](/workflow-builder/step-catalog) |
+| Try to add a step type that is already in the workflow | One instance per step type | [Left palette](/workflow-builder/palette) |
+| Add a step that has coupled steps | Coupled steps auto-add and pin to the tail | [Adding steps](/workflow-builder/adding-steps), [State model](/workflow-builder/state-model) |
+| Draw and rearrange connections | Connections stay a single linear chain | [Canvas mode](/workflow-builder/canvas), [State model](/workflow-builder/state-model) |
+| Select a node | Selecting a node opens the 350px panel (600px only for `id-verification` via the chevron) | [Right config panel](/workflow-builder/config-panel) |
+| Edit a field in the panel | Editing a field persists into `step.propertyGroups[].properties[].value` | [Right config panel](/workflow-builder/config-panel) |
+| Click or drop a gated step | A gated step opens the Contact-sales dialog | [Step catalog and gating](/workflow-builder/step-catalog) |
+| Walk the preview with the arrows | The preview walks welcome → steps → receipt with working arrow-beats | [Client preview](/workflow-builder/client-preview) |
+| Save the workflow | Save serializes to `{ organizationId, createdBy, name, steps, canvasData, status:'active' }` and blocks on validation/cycles | [Saving a workflow](/workflow-builder/saving) |
+
+The save payload the last row checks for, exactly as the spec states it:
+
+```js
+{ organizationId, createdBy, name, steps, canvasData, status:'active' }
+```
+
+<Warning>
+Two of these clauses are restrictions, not features. The 600px panel width applies **only** to `id-verification`, and only via the expand chevron — every other selected step opens the 350px panel. And Save must **block** on validation errors and on a detected cycle — surfacing the toasts or the "Cycle detected" warning alone is not enough; the save must abort. See [Right config panel](/workflow-builder/config-panel) and [Saving a workflow](/workflow-builder/saving).
+</Warning>
+
+<Note>
+"One instance per step type" and "coupled steps auto-add and pin to the tail" are enforced when a step is added: the palette hides a service once it is in the workflow, and the list-mode add path cascades coupled steps and re-pins the tail before connections are rebuilt (a canvas drop appends the coupled steps stacked below the new node but does not auto-connect them — the user draws the edge). See [Left palette](/workflow-builder/palette) and [Adding steps](/workflow-builder/adding-steps).
+</Note>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="workflow" href="/workflow-builder/overview">
+    What the Simple visual workflow builder is, what it is not, the stack it runs on, and how its three-column layout fits together.
+  </Card>
+  <Card title="Step catalog and gating" icon="boxes" href="/workflow-builder/step-catalog">
+    The constants the first build step starts from: step templates, gradients, resolvers, and gating rules.
+  </Card>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The jotai workflow atom, step and connection shapes, and how a node graph is coerced into a single linear chain.
+  </Card>
+  <Card title="Saving a workflow" icon="save" href="/workflow-builder/saving">
+    What handleClickSave validates, how steps are ordered and serialized, and the payload the final acceptance check verifies.
+  </Card>
+</CardGroup>

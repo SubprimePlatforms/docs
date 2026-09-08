@@ -1,0 +1,154 @@
+---
+title: Overview
+description: What the Simple visual workflow builder is, what it is not, the stack it runs on, and how its three-column layout fits together
+---
+
+> The Simple workflow builder is a three-column drag-and-drop editor — service palette, list or SVG canvas, and config panel — plus a live applicant preview, all entered through `WorkflowBuilderRedesign`.
+
+This tab is the reference specification for the **Simple** visual workflow builder from the `deepidv-backoffice` app — the editor behind **Workflows** in the [Admin Console](https://app.deepidv.com). It is written for engineers rebuilding or extending the builder, so it favors exact identifiers, constants, and data shapes over narrative. For the product-level introduction to workflows — what they are and how you run them — start at [Workflows](/workflows/workflows).
+
+## Scope
+
+The target is a pixel- and behavior-faithful clone of the **Simple** verification workflow builder from the deepidv-backoffice app. Reproduce only the Simple builder, which consists of four surfaces:
+
+- the drag-and-drop **service palette**
+- the **two canvas modes** (sortable list and SVG free-canvas)
+- the **right-hand config panel**
+- the live **client (applicant) preview**
+
+<Warning>
+Do **not** build the Advanced (`@xyflow`-style) builder or the Compliance/Arbiter builder. Those are separate surfaces and are out of scope for this specification.
+</Warning>
+
+## Stack and conventions to match
+
+| Concern | Convention |
+|---|---|
+| Framework | React 19 + Vite + MUI v7 |
+| Language | **JavaScript only** — `.jsx`/`.js`, never `.ts`/`.tsx` |
+| Styling | `sx` prop only; `theme.vars.*` (CSS-var palette for dark mode) |
+| Transparency | `varAlpha(theme.vars.palette.grey['500Channel'], 0.08)` from `minimal-shared/utils` |
+| Spacing | n×8px |
+| State | **jotai** atoms |
+| Data fetching | SWR/React Query + axios via an `endpoints` object |
+| Drag and drop | **@dnd-kit** (list mode) + native HTML5 DnD (canvas mode) |
+| Icons | **Iconify** with the **Solar** set, `solar:<name>-bold-duotone` |
+| Toast | a `toast` helper |
+| Imports | `src/` alias; MUI imported as individual subpaths (`import Box from '@mui/material/Box'`) |
+
+<Note>
+If you are rebuilding inside a different app or stack, keep the *architecture, data shapes, and interactions* identical and translate the primitives.
+</Note>
+
+## High-level architecture
+
+The live entry component is **`WorkflowBuilderRedesign`** (`src/components/workflow/workflow-builder-redesign.jsx`). It renders a flex column made of an optional header, a floating view-mode toggle, and the three-column main content.
+
+### Entry component and mount chain
+
+`WorkflowBuilderRedesign` is mounted by `WorkflowNewEditForm`, which is in turn mounted by `WorkflowCreateView`:
+
+```text
+WorkflowCreateView
+  └─ WorkflowNewEditForm
+       └─ WorkflowBuilderRedesign   (src/components/workflow/workflow-builder-redesign.jsx)
+```
+
+### Optional top header
+
+The header renders when `showHeader` is set. It contains, in order:
+
+1. A **Back** button
+2. The `$X.XX / session` running cost
+3. The workflow-name `TextField`
+4. A template `Select` — hidden when `fromScratch`
+5. A gradient **Save Workflow** button
+
+<Note>
+The Save Workflow button only calls the `onSave` prop. The real save logic lives in the parent view — see [Saving a workflow](/workflow-builder/saving).
+</Note>
+
+### Floating view-mode toggle
+
+A floating toggle in the top-right corner drives `viewMode` ∈ `'builder' | 'canvas' | 'preview'`.
+
+- List icon: `solar:list-linear`
+- Canvas icon: `solar:widget-4-linear`
+- In preview mode this slot becomes zoom −/＋ controls.
+
+| `viewMode` | Center content |
+|---|---|
+| `'builder'` (list) | Vertical sortable list of step cards |
+| `'canvas'` | SVG free-canvas (`WorkflowCanvas`) |
+| `'preview'` | `<ClientPreview>` |
+
+### Three-column main content
+
+The main content is a `<Stack direction="row">` of three siblings:
+
+| Column | Width | Content | Reference |
+|---|---|---|---|
+| Left palette | 300px | Service palette | [Left palette](/workflow-builder/palette) |
+| Center canvas | — | Depends on `viewMode` (see above) | [Canvas mode](/workflow-builder/canvas), [Client preview](/workflow-builder/client-preview) |
+| Right config panel | 350px / 600px | `RightConfigPanel` | [Right config panel](/workflow-builder/config-panel) |
+
+### Drag-and-drop context by mode
+
+Which drag-and-drop mechanism wraps the center depends on `viewMode`:
+
+- `viewMode === 'canvas'` → the center is the SVG free-canvas (`WorkflowCanvas`) with **no** `DndContext`; drops use native HTML5 DnD.
+- `viewMode === 'builder'` (list) or `'preview'` → the content is wrapped in a dnd-kit `<DndContext>`; the center is either the vertical sortable list of step cards or `<ClientPreview>`.
+
+<Warning>
+Canvas mode renders **no** `DndContext`. Only list mode and preview mode are wrapped in the dnd-kit `<DndContext>`. See [Adding steps](/workflow-builder/adding-steps) for how each mechanism turns a drop into a step.
+</Warning>
+
+### Canvas background
+
+The canvas background (`StyledCanvas`) is a radial-gradient dot grid (20px).
+
+### Dead files
+
+<Warning>
+The following prior-iteration files are present in-tree but unused. Do **not** reproduce them:
+
+- `interactive-workflow-builder.jsx`
+- `workflowStepsBuilder.jsx`
+- `workflow-display/workflow-chart.jsx`
+- `workflow-display/workflow-node.jsx`
+- `workflow-display/steps/add-step-button.jsx`
+- the `SaveWorkflowDialog` component — its `stepValidation` export **is** used, though (see [Saving a workflow](/workflow-builder/saving))
+
+</Warning>
+
+## Pages in this tab
+
+<CardGroup cols={2}>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The jotai workflow atom, step and connection shapes, and how a node graph is coerced into a single linear chain.
+  </Card>
+  <Card title="Step catalog and gating" icon="boxes" href="/workflow-builder/step-catalog">
+    WORKFLOW_STEPS_OPTIONS, per-step gradients, the id-based resolvers, and the plan and environment gating rules.
+  </Card>
+  <Card title="Left palette" icon="palette" href="/workflow-builder/palette">
+    The 300px service palette: search, category tabs, filtering rules, the palette card, and its two drag mechanisms.
+  </Card>
+  <Card title="Adding steps" icon="move" href="/workflow-builder/adding-steps">
+    How a dropped service becomes a step in list mode and canvas mode, including coupling, pinning, and connection rebuilds.
+  </Card>
+  <Card title="Canvas mode" icon="layout-grid" href="/workflow-builder/canvas">
+    The SVG WorkflowCanvas: props, defs, constants, node chrome, start node, connectors, layout, interactions, minimap, and toolbar.
+  </Card>
+  <Card title="Right config panel" icon="panel-right" href="/workflow-builder/config-panel">
+    RightConfigPanel and StepSettingsPanel: sizing, the id-verification expand chevron, dispatch order, the propertyGroups schema, every field type, and the persistence reducers.
+  </Card>
+  <Card title="Client preview" icon="smartphone" href="/workflow-builder/client-preview">
+    The applicant-side preview: device frame, views, the step component registry, master-verification injection, the beats system, progress stepper, and the receipt.
+  </Card>
+  <Card title="Saving a workflow" icon="save" href="/workflow-builder/saving">
+    What handleClickSave validates, how steps are ordered and serialized, and the payload sent to the workflows API.
+  </Card>
+  <Card title="Build order and acceptance" icon="list-checks" href="/workflow-builder/build-order">
+    The suggested implementation sequence for a faithful rebuild and the acceptance checks it must pass.
+  </Card>
+</CardGroup>

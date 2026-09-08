@@ -1,0 +1,149 @@
+---
+title: State model
+description: The jotai workflow atom, step and connection shapes, and how a node graph is coerced into a single linear chain
+---
+
+> The Simple builder keeps its whole document in one jotai atom, `workflowAtom` — a name, an ordered `steps[]` array, and `canvasData` (connections, node positions, viewport) — and coerces that node/connection graph into a single linear chain.
+
+Every surface described in the [overview](/workflow-builder/overview) — the palette, both canvas modes, the right config panel, and the client preview — reads from this one atom; the canvas/list drop and edit handlers and the config panel reducers write to it. This page documents the atom's shape, the two record types it stores (steps and connections), and the rules that keep the stored graph linear.
+
+## The workflow atom
+
+```js
+// workflowAtom
+{
+  name: '',
+  steps: [],           // ordered; see step shape below
+  canvasData: {
+    connections: [],   // see connection shape
+    nodePositions: {}, // { [instanceId]: { x, y } }
+    viewport: { x: 0, y: 0, zoom: 1 },
+  },
+}
+// derived: workflowStepsAtom, workflowCost (billable steps → cost)
+```
+
+| Field | Initial value | Meaning |
+|---|---|---|
+| `name` | `''` | The workflow name |
+| `steps` | `[]` | Ordered array of step objects (see [Step object](#step-object)) |
+| `canvasData.connections` | `[]` | Array of connection objects (see [Connection object](#connection-object)) |
+| `canvasData.nodePositions` | `{}` | Keyed by `instanceId`: `{ [instanceId]: { x, y } }` |
+| `canvasData.viewport` | `{ x: 0, y: 0, zoom: 1 }` | The canvas viewport (`x`, `y`, `zoom`) |
+
+Two derived atoms hang off `workflowAtom`:
+
+- `workflowStepsAtom`
+- `workflowCost` — billable steps → cost
+
+<Note>
+`steps` is **ordered**. Its order is not independent state; it is kept in sync with the connection chain by an effect (see [Linear-but-graph model](#linear-but-graph-model) below).
+</Note>
+
+## Step object
+
+A step is an entry in `workflow.steps`, created on drop (see [Adding steps](/workflow-builder/adding-steps)):
+
+```js
+{
+  id: 'id-verification',                 // step TYPE; matches a catalog entry id
+  instanceId: 'id-verification-<ts>',    // unique per placed instance (`${id}-${Date.now()}`); key for positions/connections
+  label: 'ID Verification',
+  icon: 'solar:user-id-bold-duotone',
+  propertyGroups: [ /* only if the catalog template has them; deep-cloned on add */ ],
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | The step **type**; matches a catalog entry `id` (see [Step catalog](/workflow-builder/step-catalog)) |
+| `instanceId` | Unique per placed instance, built as `` `${id}-${Date.now()}` ``; the key for `nodePositions` and connections |
+| `label` | Display label, e.g. `'ID Verification'` |
+| `icon` | Iconify id, e.g. `'solar:user-id-bold-duotone'` |
+| `propertyGroups` | Present only if the catalog template has them; deep-cloned on add. The schema is documented in [Right config panel](/workflow-builder/config-panel) |
+
+<Note>
+`id` identifies the step **type**, not the placed instance. Anything that must address a specific node on the canvas — `nodePositions`, connection `sourceId`/`targetId` — is keyed by `instanceId`.
+</Note>
+
+## Connection object
+
+```js
+{ id, sourceId, sourceAnchor, targetId, targetAnchor, waypoints: [], label: '' }
+// anchors: 'top' | 'right' | 'bottom' | 'left'; start node id constant = '__start__'
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | Connection id |
+| `sourceId` | Node the edge leaves: a step `instanceId`, or the start node constant `'__start__'` |
+| `sourceAnchor` | One of `'top'`, `'right'`, `'bottom'`, `'left'` |
+| `targetId` | Node the edge enters: a step `instanceId` |
+| `targetAnchor` | One of `'top'`, `'right'`, `'bottom'`, `'left'` |
+| `waypoints` | Defaults to `[]` |
+| `label` | Defaults to `''` |
+
+- **Anchor enum:** `'top' | 'right' | 'bottom' | 'left'`
+- **Start node id constant:** `'__start__'`
+
+How edges are drawn, hit-tested, and routed is covered in [Canvas mode](/workflow-builder/canvas).
+
+## Linear-but-graph model
+
+The Simple builder is a **single linear chain**, stored as a node/connection graph and *coerced* linear. Five rules do the coercion.
+
+### One in, one out
+
+Connection drawing enforces **max 1 outgoing per source, max 1 incoming per target**.
+
+### Order is derived from connections
+
+Order is derived by walking connections from `__start__`, following the first outgoing edge per node (`resolveStepOrderFromConnections`).
+
+<Warning>
+Cycles **warn and block save**. See [Saving a workflow](/workflow-builder/saving) for where the cycle warning aborts the save.
+</Warning>
+
+### Keeping `steps[]` in sync
+
+`steps[]` order is kept in sync with the chain via an effect.
+
+`resolvedOrder` = `{ stepKey → number }`.
+
+<Note>
+Only steps connected to `__start__` get numbered in `resolvedOrder`. A node that has been dropped on the canvas but not yet wired into the chain has no number.
+</Note>
+
+### Bottom-pinned steps
+
+Bottom-pinned steps are always forced to the tail of the chain:
+
+```js
+['bank-statement-upload','ai-bank-statement-analysis','credit-check','background-check','criminal-background-check']
+```
+
+### Coupled steps
+
+Coupled steps cascade on add/remove (`COUPLED_STEPS`). Examples:
+
+- `bank-statement-upload ↔ ai-bank-statement-analysis`
+- `background-check/credit-check/criminal-background-check → id-verification`
+
+Coupled steps show cost "included" (`$0`) and can carry `COUPLED_PROPERTY_OVERRIDES`. The add-time cascade — auto-adding the coupled partner, applying `COUPLED_PROPERTY_OVERRIDES`, and re-pinning — is documented in [Adding steps](/workflow-builder/adding-steps).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Adding steps" icon="blocks" href="/workflow-builder/adding-steps">
+    How a dropped service becomes a step, including coupling, pinning, and connection rebuilds
+  </Card>
+  <Card title="Canvas mode" icon="spline" href="/workflow-builder/canvas">
+    Drawing connections between anchors and the linear-flow check on mouseup
+  </Card>
+  <Card title="Right config panel" icon="sliders-horizontal" href="/workflow-builder/config-panel">
+    The `propertyGroups` schema stored on each step and the reducers that persist edits
+  </Card>
+  <Card title="Saving a workflow" icon="save" href="/workflow-builder/saving">
+    Resolving step order from connections and blocking on cycles before the API call
+  </Card>
+</CardGroup>

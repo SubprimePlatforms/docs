@@ -1,0 +1,132 @@
+---
+title: Saving a workflow
+description: What handleClickSave validates, how steps are ordered and serialized, and the payload sent to the workflows API
+---
+
+> Saving is owned by the parent view, not the builder: the **Save Workflow** button calls `onSave` → `handleClickSave`, which rejects bad step sets and empty names, runs `stepValidation`, resolves step order from connections (aborting on a cycle), serializes each step to `{ id, instanceId, config }`, and sends the payload to `POST /v1/workflows` or `PUT /v1/workflows/:id`.
+
+The gradient **Save Workflow** button lives in the optional top header (`showHeader`) of `WorkflowBuilderRedesign` — see the [Overview](/workflow-builder/overview) for the header, the layout, and the mount chain. The button itself holds no save logic: it calls the `onSave` prop, and the real save logic lives in the parent view. This page documents that logic end to end — the five numbered steps of `handleClickSave`, the serialized step shape, the request payload, and what happens on success.
+
+## The save chain
+
+```text
+Save Workflow button  →  onSave prop  →  parent view's handleClickSave
+```
+
+`handleClickSave` runs five steps in order. Any abort stops the chain before the API call is made.
+
+| Step | Call | Aborts when |
+|---|---|---|
+| 1 | Pre-checks | an `add-step` step is present, `steps.length < 1`, or `name.trim()` is empty |
+| 2 | `stepValidation(workflow)` | it returns one or more errors |
+| 3 | `resolveStepOrderFromConnections(steps, canvasData.connections)` | `warnings` contains "Cycle detected" |
+| 4 | `materializeWorkflowESignTemplates(...)` then `serializeWorkflowForSave(steps)` | — |
+| 5 | `POST /v1/workflows` or `PUT /v1/workflows/:id` | — |
+
+## What handleClickSave does
+
+### 1. Reject invalid step sets and require a name
+
+- Reject `add-step` steps or `steps.length < 1` (toast).
+- Require `name.trim()`.
+
+<Warning>
+A workflow that still contains an `add-step` step, or that has `steps.length < 1`, is rejected with a toast. The name must be non-empty after `trim()` before the save proceeds.
+</Warning>
+
+### 2. Run stepValidation
+
+`stepValidation(workflow)` returns an array of human-readable errors. `handleClickSave` toasts each error and aborts if there are any.
+
+Representative per-step rules (the rule set is longer than this list):
+
+- id-type counts
+- crypto networks/categories
+- e-sign template/docs
+- required `text` / `select` / `doc-upload` / `object` / `text-list`
+- data-extraction params
+- …
+
+<Note>
+`stepValidation` is the `SaveWorkflowDialog` export that **is** used. The `SaveWorkflowDialog` component itself is a prior-iteration file that must not be reproduced — see the dead-file list in the [Overview](/workflow-builder/overview).
+</Note>
+
+### 3. Resolve step order from connections
+
+`resolveStepOrderFromConnections(steps, canvasData.connections)` returns `{orderedSteps, warnings}`.
+
+<Warning>
+A "Cycle detected" warning aborts the save. Cycles warn and block save.
+</Warning>
+
+The walk itself — from `__start__`, following the first outgoing edge per node — is described in [State model](/workflow-builder/state-model).
+
+### 4. Materialize e-sign templates, then serialize
+
+Two calls, in order:
+
+1. `materializeWorkflowESignTemplates(...)` — async; it completes before serialization runs.
+2. `serializeWorkflowForSave(steps)` — produces the minimal per-step shape:
+
+```js
+{ id, instanceId, config: { [groupId]: { [propId]: value } } }
+```
+
+`config` is keyed by `groupId`, then `propId`, holding each property's `value` — the same `groupId` / `propId` / `value` that the [Right config panel](/workflow-builder/config-panel) persists into `step.propertyGroups`.
+
+`serializeWorkflowForSave` also:
+
+- **Filters `SYSTEM_STEPS`** (`add-step/start-session/end-session`) out of the output.
+- **Applies transforms**:
+
+| Source | Transform |
+|---|---|
+| `range` | → `{lower,upper}` |
+| `doc-upload` | array → keyed object |
+| proofcall / custom-form | expansion |
+
+<Note>
+The serialized step carries no `label` or `icon`. Because the persisted step strips `icon`, icon and gradient are always re-resolved from `id` — see the resolvers in [Step catalog and gating](/workflow-builder/step-catalog).
+</Note>
+
+### 5. Call the workflows API
+
+- **Create**: `POST /v1/workflows`
+- **Edit**: `PUT /v1/workflows/:id`
+
+Both send the same body:
+
+```js
+{ organizationId, createdBy, name, steps: transformedSteps,
+  canvasData: serializeCanvasData(canvasData), status: 'active' }
+```
+
+- `steps` is `transformedSteps` — the output of step 4.
+- `canvasData` is `serializeCanvasData(canvasData)` — the atom's `canvasData` (connections, node positions, viewport; see [State model](/workflow-builder/state-model)) passed through `serializeCanvasData`.
+- `status` is the literal `'active'`.
+- `organizationId`, `createdBy`, and `name` complete the body.
+
+The public create endpoint is documented at [Create workflow](/api-reference/workflows/create-workflow).
+
+## On success
+
+1. Toast.
+2. Reset the atom to the blank shape — the initial `workflowAtom` documented in [State model](/workflow-builder/state-model).
+3. Navigate to the workflow list.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="State model" icon="database" href="/workflow-builder/state-model">
+    The blank `workflowAtom` shape, `canvasData`, and how order is walked from `__start__`
+  </Card>
+  <Card title="Right config panel" icon="sliders-horizontal" href="/workflow-builder/config-panel">
+    The `propertyGroups` schema whose `groupId` / `propId` / `value` become `config`
+  </Card>
+  <Card title="Overview" icon="workflow" href="/workflow-builder/overview">
+    The header that hosts the Save Workflow button and the dead-file list
+  </Card>
+  <Card title="Build order and acceptance" icon="list-checks" href="/workflow-builder/build-order">
+    The acceptance check that Save serializes correctly and blocks on validation and cycles
+  </Card>
+</CardGroup>

@@ -1,0 +1,119 @@
+---
+title: Left palette
+description: "The 300px service palette: search, category tabs, filtering rules, the palette card, and its two drag mechanisms"
+---
+
+> The left column of the Simple builder is a fixed 300px palette of service cards, narrowed by a search field, a category tab, plan availability, and a one-instance-per-step-type rule, and dragged onto the center with one of two mechanisms depending on the view mode.
+
+The palette is the first of the three siblings in the builder's main row (see [Overview](/workflow-builder/overview)). It renders the same cards in list mode and canvas mode; only the drag mechanism changes. Its source list comes from the catalog and gating helpers documented in [Step catalog and gating](/workflow-builder/step-catalog).
+
+## Column and header
+
+| Part | Value |
+|---|---|
+| Column width | `300` |
+| Header title | "Available Services" |
+| Search field | `TextField` with icon `eva:search-fill` |
+
+## Category tabs
+
+The tabs are a hard-coded MUI `Tabs` component with the indicator hidden and a pill selected state. The default tab is `'All'`.
+
+```js
+[{value:'All'},{value:'Verify'},{value:'Docs'},{value:'Screen'},{value:'Crypto'},{value:'Gaming'}]
+```
+
+The five named tabs correspond to the catalog `category` values; `'All'` disables category filtering.
+
+## Filtering
+
+The visible card list is computed from four inputs: `availableServices` (the plan's available services), `searchQuery` (the search field text), `categoryTab` (the selected tab), and `steps` (the current workflow steps).
+
+```js
+getAvailableServiceData(availableServices).filter((service) => {
+  const matchesSearch = service.label.toLowerCase().includes(searchQuery.toLowerCase());
+  const matchesCategory = categoryTab === 'All' || service.category === categoryTab;
+  const alreadyInWorkflow = steps.some((s) => s.id === service.id);
+  return matchesSearch && matchesCategory && !alreadyInWorkflow; // one instance per step type
+});
+```
+
+| Condition | Rule |
+|---|---|
+| Source list | `getAvailableServiceData(availableServices)`: `SERVICE_DATA` minus `advancedOnly` entries and minus steps the plan does not include (`isWorkflowStepAvailable`) — see [Step catalog and gating](/workflow-builder/step-catalog) |
+| `matchesSearch` | Case-insensitive substring match of `searchQuery` against `service.label` only |
+| `matchesCategory` | `true` when `categoryTab === 'All'`; otherwise `service.category === categoryTab` |
+| `alreadyInWorkflow` | `true` when any entry in `steps` has the same `id` as the service |
+
+<Note>
+A card disappears from the palette as soon as a step with the same `id` exists in the workflow. This is the **one instance per step type** rule: the filter returns `!alreadyInWorkflow`, so a step type that has already been placed cannot be dragged again.
+</Note>
+
+<Info>
+Gated steps (`gated`, or `devOnly` outside dev) are not removed by this filter. Their cards still render, but click or drop opens `FeatureLockedDialog` instead of adding the step — see [Step catalog and gating](/workflow-builder/step-catalog).
+</Info>
+
+## Palette card
+
+The same card is rendered in both modes. It is a gradient tile followed by a text block, in this order:
+
+| Element | Spec |
+|---|---|
+| Tile | 36×36, `borderRadius: '22%'`, `background: getStepGradient(service.id)` |
+| Tile icon | white `<Iconify icon={service.icon} width={20}/>` |
+| Title | `subtitle2` |
+| Cost | right-aligned; `fCurrency(service.cost)` or the string "included" |
+| Description | `caption` |
+
+The cost hides on hover via a max-width/opacity transition.
+
+<Note>
+Coupled steps show "included" rather than a currency amount (a cost of `$0`) — see [State model](/workflow-builder/state-model). The gradient comes from `getStepGradient(service.id)`, never from a field on the catalog entry — see [Step catalog and gating](/workflow-builder/step-catalog).
+</Note>
+
+## Drag mechanisms
+
+<Warning>
+There are **two** drag mechanisms and a faithful rebuild must match both exactly. List mode uses dnd-kit; canvas mode uses native HTML5 drag and drop, and the canvas is not wrapped in a `DndContext` (see [Overview](/workflow-builder/overview)).
+</Warning>
+
+### List mode (dnd-kit)
+
+In list mode the palette card is a dnd-kit `useSortable` item:
+
+| Option | Value |
+|---|---|
+| `id` | the template literal `palette:${service.id}` |
+| `data` | `{service}` |
+
+The `palette:` prefix is what the `DndContext` handlers parse with `parseNodeDropId` to tell a palette drag from a `chart:` reorder — see [Adding steps](/workflow-builder/adding-steps).
+
+### Canvas mode (native HTML5)
+
+In canvas mode the card is a native HTML5 `draggable` element with this drag-start handler:
+
+```jsx
+const handleDragStart = (e) => {
+  e.dataTransfer.setData('application/workflow-step', service.id);
+  e.dataTransfer.effectAllowed = 'copy';
+};
+```
+
+The canvas container's `onDrop` reads the same `'application/workflow-step'` key back to look up the step definition, and its `onDragOver` sets `dropEffect='copy'` to pair with `effectAllowed = 'copy'` — see [Adding steps](/workflow-builder/adding-steps).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Step catalog and gating" icon="boxes" href="/workflow-builder/step-catalog">
+    Where getAvailableServiceData, getStepGradient, and the gating rules live.
+  </Card>
+  <Card title="Adding steps" icon="hand" href="/workflow-builder/adding-steps">
+    What happens after a card is dropped in list mode and in canvas mode.
+  </Card>
+  <Card title="Canvas mode" icon="layout-grid" href="/workflow-builder/canvas">
+    The SVG canvas that receives the HTML5 drop.
+  </Card>
+  <Card title="Overview" icon="workflow" href="/workflow-builder/overview">
+    The three-column layout and which view modes carry a DndContext.
+  </Card>
+</CardGroup>
