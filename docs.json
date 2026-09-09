@@ -89,11 +89,21 @@
             ]
           },
           {
-            "group": "Management API 🔧",
+            "group": "Management API",
             "pages": [
               "api-reference/workflows/create-workflow",
               "api-reference/workflows/list-workflows",
               "api-reference/workflows/retrieve-workflow"
+            ]
+          },
+          {
+            "group": "Workflow Runner",
+            "pages": [
+              "api-reference/workflow-runner/create-workflow-session",
+              "api-reference/workflow-runner/get-workflow-state",
+              "api-reference/workflow-runner/start-workflow",
+              "api-reference/workflow-runner/create-session-uploads",
+              "api-reference/workflow-runner/submit-workflow-step"
             ]
           },
           {
