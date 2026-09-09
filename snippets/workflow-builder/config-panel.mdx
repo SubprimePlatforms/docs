@@ -1,0 +1,223 @@
+export const makeConfigPanel = ({ WB, utils, store, ui, fields }) => {
+
+  const { useWorkflow } = store;
+  const { renderField } = fields;
+  const { LucideIcon, StepIcon, Alert, Divider, Tabs, IconButton, EmptyState } = ui;
+  const cx = (...p) => p.filter(Boolean).join(' ');
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const stepKeyOf = (s) => (s && (s.instanceId || s.id)) || null;
+  const REMOVED = arr(WB.REMOVED_PROPERTY_GROUPS);
+  const GUARD = arr(WB.STEP_UP_GUARD_STEPS);
+  const PHONE_INTEL = arr(WB.PHONE_INTEL_BLOCK_IDS);
+
+  const allPropsOf = (step) => {
+    const out = [];
+    arr(step && step.propertyGroups).forEach((g) => arr(g && g.properties).forEach((p) => out.push(p)));
+    return out;
+  };
+
+  const requirementMet = (prop, all) => {
+    if (utils && typeof utils.isRequirementMet === 'function') {
+      try { return utils.isRequirementMet(prop, all); } catch (e) {}
+    }
+    const find = (id) => all.find((p) => p && p.id === id);
+    const req = prop && prop.requirement;
+    let ok = true;
+    if (typeof req === 'string') { const r = find(req); ok = !!(r && r.value === true); }
+    else if (req && typeof req === 'object') {
+      const r = find(req.id);
+      if ('equals' in req) ok = !!(r && r.value === req.equals);
+      else if ('notEquals' in req) ok = !!(r && r.value !== req.notEquals);
+    }
+    if (ok && prop && typeof prop.requirementInverse === 'string') {
+      const inv = find(prop.requirementInverse);
+      ok = !(inv && inv.value === true);
+    }
+    return ok;
+  };
+
+  const StepHeader = ({ step }) => (
+    <div className="wb-panel-head">
+      <div className="wb-panel-head-row">
+        <span className="wb-tile wb-tile-lg" style={{ background: utils.getStepGradient(step.id) }}>
+          <StepIcon icon={utils.getStepIcon(step.id)} size={24} />
+        </span>
+        <div className="wb-panel-head-text">
+          <div className="wb-panel-step">{step.label}</div>
+          <div className="wb-muted wb-caption">{utils.getStepDescription(step.id)}</div>
+        </div>
+      </div>
+      <h6 className="wb-panel-title">Configure Settings</h6>
+      <Divider />
+      {GUARD.indexOf(step.id) >= 0 ? (
+        <Alert severity="warning" title="Step-up escalation">
+          A failure here escalates the session to step-up verification rather than declining it outright.
+        </Alert>
+      ) : null}
+    </div>
+  );
+
+  const GroupBlock = ({ step, group, allProps, onValue, onValues, onWeights }) => {
+    const visible = arr(group.properties).filter((p) => p && p.type !== 'hidden');
+    if (!visible.length) return null;
+    return (
+      <section className="wb-group" data-testid={'wb-group-' + group.groupId}>
+        <header className="wb-group-head">
+          {group.groupIcon ? <LucideIcon name={group.groupIcon} size={15} /> : null}
+          <span className="wb-group-name">{group.groupName}</span>
+          {group.groupTooltip ? <span className="wb-group-tip" title={group.groupTooltip}><LucideIcon name="info" size={13} /></span> : null}
+        </header>
+        <div className="wb-group-body">
+          {visible.map((prop) => {
+            const met = requirementMet(prop, allProps);
+            const isDisabled = !!(prop.locked || prop.disabled || !met);
+            return renderField({
+              prop, group, step, isDisabled, allProps,
+              onChange: (value) => onValue(group.groupId, prop.id, value),
+              onChangeMany: (values) => onValues(group.groupId, values),
+              onLinkedWeight: (changedId, value) => onWeights(group.groupId, changedId, value),
+            });
+          })}
+        </div>
+      </section>
+    );
+  };
+
+  const GenericSettings = ({ step, onValue, onValues, onWeights }) => {
+    const allProps = allPropsOf(step);
+    const groups = arr(step.propertyGroups).filter((g) => g && REMOVED.indexOf(g.groupId) < 0).filter((g) => {
+      if (!g.parentToggle) return true;
+      const parent = allProps.find((p) => p && p.id === g.parentToggle);
+      return !!(parent && parent.value);
+    });
+
+    const forced = useRef({});
+    useEffect(() => {
+      const key = stepKeyOf(step);
+      arr(step.propertyGroups).forEach((g) => arr(g && g.properties).forEach((p) => {
+        if (!p || p.type !== 'boolean' || p.locked) return;
+        const met = requirementMet(p, allProps);
+        const shouldDisable = !!(p.disabled || !met);
+        if (shouldDisable && p.value === true) {
+          const marker = key + '|' + g.groupId + '|' + p.id;
+          if (forced.current[marker]) return;
+          forced.current[marker] = true;
+          onValue(g.groupId, p.id, false);
+        }
+      }));
+    }, [step, allProps, onValue]);
+
+    if (!groups.length) {
+      return (
+        <div className="wb-panel-empty">
+          <span className="wb-tile wb-tile-lg" style={{ background: utils.getStepGradient(step.id) }}><StepIcon icon={utils.getStepIcon(step.id)} size={24} /></span>
+          <div className="wb-panel-step">{step.label}</div>
+          <div className="wb-muted">No configurable options</div>
+        </div>
+      );
+    }
+    return (
+      <div className="wb-groups">
+        {groups.map((g) => <GroupBlock key={g.groupId} step={step} group={g} allProps={allProps} onValue={onValue} onValues={onValues} onWeights={onWeights} />)}
+      </div>
+    );
+  };
+
+  const PhoneVerificationSettings = ({ step, onValue, onValues, onWeights }) => {
+    const [tab, setTab] = useState('call');
+    const allProps = allPropsOf(step);
+    const groups = arr(step.propertyGroups).filter((g) => g && REMOVED.indexOf(g.groupId) < 0);
+    const tabs = [{ value: 'call', label: 'Call' }, { value: 'script', label: 'Script' }, { value: 'advanced', label: 'Advanced' }];
+    const pick = (g, i) => {
+      if (tab === 'call') return i === 0;
+      if (tab === 'script') return i === 1 || (groups.length === 1 && i === 0);
+      return i >= 2;
+    };
+    const shown = groups.filter(pick);
+    return (
+      <div className="wb-groups" data-testid="wb-phone-settings">
+        <Tabs value={tab} onChange={setTab} tabs={tabs} testIdPrefix="wb-phone-tab-" />
+        {shown.length
+          ? shown.map((g) => <GroupBlock key={g.groupId} step={step} group={g} allProps={allProps} onValue={onValue} onValues={onValues} onWeights={onWeights} />)
+          : <div className="wb-muted wb-pad">Nothing to configure in this tab.</div>}
+      </div>
+    );
+  };
+
+  const PhoneIntelBlock = ({ step, onValue, onValues, onWeights }) => (
+    <div className="wb-groups" data-testid="wb-phone-intel">
+      <Alert severity="info" title="Phone intelligence">Signals from this block feed the shared phone-intelligence score.</Alert>
+      <GenericSettings step={step} onValue={onValue} onValues={onValues} onWeights={onWeights} />
+    </div>
+  );
+
+  const RightConfigPanel = () => {
+    const wf = useWorkflow() || {};
+    const selectors = wf.selectors || {};
+    const actions = wf.actions || {};
+    const step = selectors.selectedStep || null;
+    const [expanded, setExpanded] = useState(false);
+
+    const canExpand = !!(step && step.id === 'id-verification');
+    const effectiveExpanded = expanded && canExpand;
+    const width = effectiveExpanded ? WB.PANEL.WIDTH_EXPANDED : WB.PANEL.WIDTH;
+
+    useEffect(() => { if (!canExpand && expanded) setExpanded(false); }, [canExpand, expanded]);
+
+    const key = stepKeyOf(step);
+    const onValue = useCallback((groupId, propId, value) => {
+      if (typeof actions.updatePropertyValue === 'function') actions.updatePropertyValue({ stepKey: key, groupId, propId, value });
+    }, [actions, key]);
+    const onValues = useCallback((groupId, values) => {
+      if (typeof actions.updatePropertyValues === 'function') actions.updatePropertyValues({ stepKey: key, groupId, values });
+    }, [actions, key]);
+    const onWeights = useCallback((groupId, changedId, value) => {
+      if (typeof actions.updateLinkedWeights === 'function') actions.updateLinkedWeights({ stepKey: key, groupId, changedId, value });
+    }, [actions, key]);
+
+    let body;
+    if (!step) {
+      body = (
+        <div className="wb-panel-empty" data-testid="wb-config-empty">
+          <LucideIcon name="settings" size={48} className="wb-muted" />
+          <div className="wb-panel-step">Configure Settings</div>
+          <div className="wb-muted" style={{ whiteSpace: 'pre-line' }}>{'Select a step in the workflow\nto configure how it runs.'}</div>
+        </div>
+      );
+    } else if (step.id === 'phone-verification') {
+      body = <PhoneVerificationSettings step={step} onValue={onValue} onValues={onValues} onWeights={onWeights} />;
+    } else if (PHONE_INTEL.indexOf(step.id) >= 0) {
+      body = <PhoneIntelBlock step={step} onValue={onValue} onValues={onValues} onWeights={onWeights} />;
+    } else {
+      body = <GenericSettings step={step} onValue={onValue} onValues={onValues} onWeights={onWeights} />;
+    }
+
+    return (
+      <aside
+        className="wb-panel"
+        data-testid="wb-config-panel"
+        data-expanded={effectiveExpanded ? 'true' : 'false'}
+        style={{ width, transition: 'width 0.25s ease' }}
+      >
+        {canExpand ? (
+          <button
+            type="button"
+            className="wb-panel-expand"
+            data-testid="wb-panel-expand"
+            aria-label={effectiveExpanded ? 'Collapse panel' : 'Expand panel'}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <LucideIcon name={effectiveExpanded ? 'chevron-right' : 'chevron-left'} size={16} />
+          </button>
+        ) : null}
+        <div className="wb-panel-body">
+          {step ? <StepHeader step={step} /> : null}
+          {body}
+        </div>
+      </aside>
+    );
+  };
+
+  return { RightConfigPanel };
+};
+

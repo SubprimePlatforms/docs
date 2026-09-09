@@ -197,6 +197,15 @@
             "pages": ["chain-layer/faq", "chain-layer/reference"]
           }
         ]
+      },
+      {
+        "tab": "Workflow Builder",
+        "groups": [
+          {
+            "group": "Builder",
+            "pages": ["workflow-builder"]
+          }
+        ]
       }
     ],
     "global": {

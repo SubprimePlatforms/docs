@@ -1,0 +1,253 @@
+export const makeApp = ({ WB, WB_CSS, ui, utils, geometry, store, palette, listMode, canvas, configPanel, preview }) => {
+
+  const { WorkflowProvider, useWorkflow } = store;
+  const { Palette } = palette;
+  const { ListCanvas } = listMode;
+  const { WorkflowCanvas } = canvas;
+  const { RightConfigPanel } = configPanel;
+  const { ClientPreview } = preview;
+  const { Button, IconButton, TextField, Select, Dialog, ToastProvider, useToast, FeatureLockedDialog, LucideIcon, Alert } = ui;
+  const cx = (...p) => p.filter(Boolean).join(' ');
+  const arr = (v) => (Array.isArray(v) ? v : []);
+
+  const Styles = () => {
+    const done = useRef(false);
+    useEffect(() => {
+      if (done.current) return;
+      done.current = true;
+      try {
+        if (!document.getElementById('wb-css')) {
+          const el = document.createElement('style');
+          el.id = 'wb-css';
+          el.textContent = WB_CSS;
+          document.head.appendChild(el);
+        }
+      } catch (e) {}
+    }, []);
+    return null;
+  };
+
+  const Shell = () => {
+    const wf = useWorkflow() || {};
+    const state = wf.state || {};
+    const actions = wf.actions || {};
+    const selectors = wf.selectors || {};
+    const toast = useToast();
+
+    const workflow = state.workflow || {};
+    const steps = arr(workflow.steps);
+    const viewMode = state.viewMode || 'builder';
+
+    const [gated, setGated] = useState(null);
+    const [saveOpen, setSaveOpen] = useState(false);
+    const [payload, setPayload] = useState(null);
+    const [apiKey, setApiKey] = useState('');
+    const [sending, setSending] = useState(false);
+    const [sendResult, setSendResult] = useState(null);
+    const [zoom, setZoom] = useState(1);
+    const [device, setDevice] = useState('mobile');
+    const [headerH, setHeaderH] = useState(112);
+
+    useEffect(() => {
+      const measure = () => {
+        try {
+          const el = document.querySelector('header');
+          const b = el ? Math.round(el.getBoundingClientRect().bottom) : 112;
+          setHeaderH(b > 0 ? b : 112);
+        } catch (e) { setHeaderH(112); }
+      };
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }, []);
+
+    const onGated = useCallback((service) => setGated(service || null), []);
+
+    const cost = selectors.cost || 0;
+    const costLabel = (utils.fCurrency ? utils.fCurrency(cost) : '$' + Number(cost).toFixed(2)) + ' / session';
+
+    const handleSave = () => {
+      const name = String(workflow.name || '').trim();
+      if (!steps.length) { toast('Add at least one service before saving.', { type: 'error' }); return; }
+      if (steps.some((s) => s && s.id === 'add-step')) { toast('Remove placeholder steps before saving.', { type: 'error' }); return; }
+      if (!name) { toast('Give your workflow a name.', { type: 'error' }); return; }
+
+      let errors = [];
+      try { errors = arr(utils.stepValidation({ ...workflow, name })); } catch (e) { errors = []; }
+      if (errors.length) { errors.slice(0, 4).forEach((m) => toast(String(m), { type: 'error' })); return; }
+
+      let ordered = steps;
+      try {
+        const res = utils.resolveStepOrderFromConnections(steps, arr(workflow.canvasData && workflow.canvasData.connections));
+        if (res && arr(res.warnings).some((w) => /cycle/i.test(String(w)))) { toast('Cycle detected in the workflow — fix the connections first.', { type: 'error' }); return; }
+        if (res && arr(res.orderedSteps).length) ordered = res.orderedSteps;
+        else if (res && arr(res.ordered).length) ordered = res.ordered;
+      } catch (e) {}
+      let body = null;
+      try {
+        body = utils.buildSavePayload({
+          workflow: { ...workflow, name },
+          orderedSteps: ordered,
+          organizationId: 'org_demo',
+          createdBy: 'you@deepidv.com',
+        });
+      } catch (e) {
+        body = {
+          organizationId: 'org_demo', createdBy: 'you@deepidv.com', name,
+          steps: utils.serializeWorkflowForSave ? utils.serializeWorkflowForSave(ordered) : [],
+          canvasData: utils.serializeCanvasData ? utils.serializeCanvasData(workflow.canvasData) : workflow.canvasData,
+          status: 'active',
+        };
+      }
+      if (body && !body.status) body.status = 'active';
+      setPayload(body);
+      setSendResult(null);
+      setSaveOpen(true);
+      toast('Workflow payload ready.', { type: 'success' });
+    };
+
+    const copyPayload = () => {
+      try {
+        const text = JSON.stringify(payload, null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text);
+        toast('Payload copied.', { type: 'success' });
+      } catch (e) { toast('Could not copy.', { type: 'error' }); }
+    };
+
+    const downloadPayload = () => {
+      try {
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (String(workflow.name || 'workflow').toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'workflow') + '.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) { toast('Download failed.', { type: 'error' }); }
+    };
+
+    const sendToApi = () => {
+      if (!apiKey.trim()) { toast('Enter an API key first.', { type: 'error' }); return; }
+      setSending(true); setSendResult(null);
+      try {
+        fetch('https://api.deepidv.com/v1/workflows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey.trim() },
+          body: JSON.stringify(payload),
+        }).then((r) => r.text().then((t) => {
+          setSending(false);
+          setSendResult({ ok: r.ok, status: r.status, body: t.slice(0, 600) });
+        })).catch((err) => { setSending(false); setSendResult({ ok: false, status: 0, body: String(err && err.message) }); });
+      } catch (e) { setSending(false); setSendResult({ ok: false, status: 0, body: String(e && e.message) }); }
+    };
+
+    const templates = arr(WB.TEMPLATES);
+
+    return (
+      <div className="wb-root" data-testid="wb-root" style={{ height: 'calc(100vh - ' + headerH + 'px)' }}>
+        <Styles />
+
+        <header className="wb-header">
+          <a className="wb-back" href="/workflows/workflows"><LucideIcon name="arrow-left" size={16} /><span>{'Workflows'}</span></a>
+          <span className="wb-cost" data-testid="wb-cost">{costLabel}</span>
+          <div className="wb-header-mid">
+            <TextField value={workflow.name || ''} placeholder="Untitled workflow" testId="wb-name-input"
+              onChange={(v) => { if (typeof actions.setName === 'function') actions.setName({ name: v }); }} />
+            <Select value="" placeholder="Start from a template" testId="wb-template-select"
+              options={templates.map((t) => ({ value: t.id, label: t.label }))}
+              onChange={(id) => { if (id && typeof actions.applyTemplate === 'function') { actions.applyTemplate({ templateId: id }); toast('Template applied.', { type: 'success' }); } }} />
+          </div>
+          <button type="button" className="wb-btn wb-btn-primary" data-testid="wb-save-btn" onClick={handleSave}>
+            <LucideIcon name="save" size={15} color="#ffffff" /><span>{'Save Workflow'}</span>
+          </button>
+        </header>
+
+        <div className="wb-viewtoggle">
+          {viewMode === 'preview' ? (
+            <>
+              <IconButton name="smartphone" size={16} label="Mobile" testId="wb-device-mobile" active={device === 'mobile'} onClick={() => setDevice('mobile')} />
+              <IconButton name="monitor" size={16} label="Desktop" testId="wb-device-desktop" active={device === 'desktop'} onClick={() => setDevice('desktop')} />
+              <IconButton name="zoom-out" size={16} label="Zoom out" testId="wb-preview-zoom-out" onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))} />
+              <IconButton name="zoom-in" size={16} label="Zoom in" testId="wb-preview-zoom-in" onClick={() => setZoom((z) => Math.min(1.4, z + 0.1))} />
+            </>
+          ) : null}
+          <IconButton name="list" size={16} label="List view" testId="wb-view-toggle-builder" active={viewMode === 'builder'}
+            onClick={() => { if (typeof actions.setViewMode === 'function') actions.setViewMode({ viewMode: 'builder' }); }} />
+          <IconButton name="layout-grid" size={16} label="Canvas view" testId="wb-view-toggle-canvas" active={viewMode === 'canvas'}
+            onClick={() => { if (typeof actions.setViewMode === 'function') actions.setViewMode({ viewMode: 'canvas' }); }} />
+          <IconButton name="eye" size={16} label="Preview" testId="wb-view-toggle-preview" active={viewMode === 'preview'}
+            onClick={() => { if (typeof actions.setViewMode === 'function') actions.setViewMode({ viewMode: 'preview' }); }} />
+        </div>
+
+        <div className="wb-main">
+          <Palette viewMode={viewMode} onGated={onGated} />
+          <main className="wb-center">
+            {viewMode === 'canvas' ? <WorkflowCanvas onGated={onGated} />
+              : viewMode === 'preview' ? <ClientPreview zoomLevel={zoom} deviceMode={device} branding={{ primaryColor: WB.BRAND.primary }} />
+              : <ListCanvas onGated={onGated} />}
+          </main>
+          <RightConfigPanel />
+        </div>
+
+        <FeatureLockedDialog open={!!gated} onClose={() => setGated(null)} feature={gated ? gated.label : ''} />
+
+        <Dialog open={saveOpen} onClose={() => setSaveOpen(false)} title="Workflow payload" width={720} testId="wb-save-dialog"
+          actions={(
+            <>
+              <Button variant="text" color="inherit" onClick={() => setSaveOpen(false)}>Close</Button>
+              <Button variant="outlined" startIcon="copy" onClick={copyPayload} testId="wb-save-copy">Copy</Button>
+              <Button variant="contained" startIcon="download" onClick={downloadPayload} testId="wb-save-download">Download</Button>
+            </>
+          )}>
+          <pre className="wb-json" data-testid="wb-save-json">{payload ? JSON.stringify(payload, null, 2) : ''}</pre>
+          <div className="wb-send">
+            <div className="wb-field-label">Send to the deepidv API (optional)</div>
+            <div className="wb-row">
+              <TextField value={apiKey} onChange={setApiKey} placeholder="x-api-key" fullWidth testId="wb-api-key" type="password" />
+              <Button variant="outlined" onClick={sendToApi} disabled={sending} testId="wb-send-api">{sending ? 'Sending...' : 'Send'}</Button>
+            </div>
+            <div className="wb-caption wb-muted">{'POSTs to api.deepidv.com/v1/workflows. The key is never stored.'}</div>
+            {sendResult ? <Alert severity={sendResult.ok ? 'success' : 'error'} title={'HTTP ' + sendResult.status}>{sendResult.body}</Alert> : null}
+          </div>
+        </Dialog>
+      </div>
+    );
+  };
+
+  const WorkflowBuilder = () => (
+    <ToastProvider>
+      <WorkflowProvider>
+        <Shell />
+      </WorkflowProvider>
+    </ToastProvider>
+  );
+
+  return { WorkflowBuilder };
+};
+
+export const WorkflowBuilderApp = (props) => {
+  const d = (props && props.deps) || {};
+  const App = useMemo(() => {
+    if (typeof d.makeApp !== 'function') return () => <div className="wb-boot-error">Workflow Builder failed to load.</div>;
+    const ui = d.makeUi();
+    const utils = d.makeUtils({ WB: d.WB, STEP_PROPERTY_GROUPS: d.STEP_PROPERTY_GROUPS });
+    const geometry = d.makeGeometry({ WB: d.WB });
+    const store = d.makeStore({ WB: d.WB, utils, geometry });
+    const beats = d.makeBeats();
+    const previewSteps = d.makePreviewSteps({ WB: d.WB, utils, ui, beats });
+    const previewMod = d.makePreview({ WB: d.WB, utils, store, ui, previewSteps, beats });
+    const fields = d.makeFields({ WB: d.WB, utils, ui });
+    const configPanelMod = d.makeConfigPanel({ WB: d.WB, utils, store, ui, fields });
+    const paletteMod = d.makePalette({ WB: d.WB, utils, store, ui });
+    const listModeMod = d.makeListMode({ WB: d.WB, utils, store, ui });
+    const canvasMod = d.makeCanvas({ WB: d.WB, utils, geometry, store, ui });
+    return d.makeApp({
+      WB: d.WB, WB_CSS: d.WB_CSS, ui, utils, geometry, store,
+      palette: paletteMod, listMode: listModeMod, canvas: canvasMod,
+      configPanel: configPanelMod, preview: previewMod,
+    }).WorkflowBuilder;
+  }, []);
+  return <App />;
+};
+
+

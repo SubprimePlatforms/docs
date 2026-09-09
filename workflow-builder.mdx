@@ -1,0 +1,23 @@
+---
+title: Workflow Builder
+description: Build a deepidv verification workflow visually — drag services in, connect them, configure each step, preview the applicant experience, and export the workflow payload
+mode: "custom"
+---
+
+import { WB_CSS } from '/snippets/workflow-builder/styles.mdx'
+import { WB } from '/snippets/workflow-builder/constants.mdx'
+import { STEP_PROPERTY_GROUPS } from '/snippets/workflow-builder/property-groups.mdx'
+import { makeUi } from '/snippets/workflow-builder/ui.mdx'
+import { makeUtils } from '/snippets/workflow-builder/utils.mdx'
+import { makeGeometry } from '/snippets/workflow-builder/canvas-geometry.mdx'
+import { makeStore } from '/snippets/workflow-builder/store.mdx'
+import { makePalette } from '/snippets/workflow-builder/palette.mdx'
+import { makeListMode } from '/snippets/workflow-builder/list-mode.mdx'
+import { makeCanvas } from '/snippets/workflow-builder/canvas.mdx'
+import { makeFields } from '/snippets/workflow-builder/fields.mdx'
+import { makeConfigPanel } from '/snippets/workflow-builder/config-panel.mdx'
+import { makePreviewSteps } from '/snippets/workflow-builder/preview-steps.mdx'
+import { makeBeats, makePreview } from '/snippets/workflow-builder/preview.mdx'
+import { makeApp, WorkflowBuilderApp } from '/snippets/workflow-builder/app.mdx'
+
+<WorkflowBuilderApp deps={{ WB, WB_CSS, STEP_PROPERTY_GROUPS, makeUi, makeUtils, makeGeometry, makeStore, makePalette, makeListMode, makeCanvas, makeFields, makeConfigPanel, makePreviewSteps, makeBeats, makePreview, makeApp }} />
